@@ -26,6 +26,7 @@
     "expo-linear-gradient": "~14.1.5",
     "expo-location": "~18.1.6",
     "expo-status-bar": "~2.2.3",
+    "expo-video": "~2.2.2",
     "lodash": "^4.17.21",
     "lottie-react-native": "7.2.2",
     "react": "19.0.0",
@@ -36,10 +37,13 @@
     "react-native-linear-gradient": "^2.8.3",
     "react-native-maps": "1.20.1",
     "react-native-material-ripple": "^0.9.1",
+    "react-native-otp-textinput": "^1.1.7",
     "react-native-paper": "^5.14.5",
     "react-native-ratings": "^8.1.0",
     "react-native-raw-bottom-sheet": "^3.0.0",
     "react-native-reanimated": "~3.17.4",
+    "react-native-reanimated-carousel": "^4.0.3",
+    "react-native-responsive-screen": "^1.4.2",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-shimmer-placeholder": "^2.0.9",
@@ -51,9 +55,8 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
-    "typescript": "~5.8.3",
-    "@types/react": "~19.0.10"
-
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   },
   "expo": {
     "doctor": {
@@ -63,7 +66,9 @@
           "react-native-chart-kit",
           "react-native-material-ripple",
           "react-native-responsive-screen",
-          "react-native-raw-bottom-sheet"
+          "react-native-raw-bottom-sheet",
+          "react-native-otp-textinput",
+          "react-native-fast-image"
         ]
       }
     }

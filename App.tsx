@@ -4,14 +4,17 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { Provider as ReduxProvider } from 'react-redux';
 import store from './app/redux/store';
 import StackNavigator from './app/Navigations/StackNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function App() {
   return (
     <ReduxProvider store={store}>
       <PaperProvider>
-        <NavigationContainer theme={DefaultTheme}>
-          <StackNavigator />
-        </NavigationContainer>
+        <SafeAreaView style={{ flex: 1 }}>
+          <NavigationContainer theme={DefaultTheme}>
+            <StackNavigator />
+          </NavigationContainer>
+        </SafeAreaView>
       </PaperProvider>
     </ReduxProvider>
   );
