@@ -10,9 +10,11 @@ import ShortSheet2 from '../../components/BottomSheet/ShortShreet';
 type Props = {
   height?: string;
   onFiltersChange?: (filters: any) => void;
+  initialFilters?: any;
+  currentFilters?: any;
 };
 
-const BottomSheet2 = forwardRef(({ height, onFiltersChange }: Props, ref) => {
+const BottomSheet2 = forwardRef(({ height, onFiltersChange, initialFilters }: Props, ref) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
 
@@ -79,6 +81,7 @@ const BottomSheet2 = forwardRef(({ height, onFiltersChange }: Props, ref) => {
           key={`filter-${key}`} // Key forces remount when changed
           sheetRef={rbsheetRef} 
           onFiltersChange={handleFiltersChange} 
+          initialFilters={initialFilters}
         />
       )}
       {sheetType === 'Language' && (
@@ -104,10 +107,10 @@ const GenderSheet = ({ genderRef }: { genderRef: any }) => {
   );
 };
 
-const FilterSheet = ({ sheetRef, onFiltersChange }: { sheetRef: any; onFiltersChange?: (filters: any) => void }) => {
+const FilterSheet = ({ sheetRef, onFiltersChange, initialFilters }: { sheetRef: any; onFiltersChange?: (filters: any) => void; initialFilters?: any }) => {
   return (
     <View>
-      <FilterSheet2 sheetRef={sheetRef} onFiltersChange={onFiltersChange} />
+      <FilterSheet2 sheetRef={sheetRef} onFiltersChange={onFiltersChange} initialFilters={initialFilters} />
     </View>
   );
 };

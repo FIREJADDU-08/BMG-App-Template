@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Animated, TextInput } from 'react-native';
 import { GlobalStyleSheet } from '../../constants/StyleSheet';
 import { COLORS, FONTS } from '../../constants/theme';
 import { useTheme } from '@react-navigation/native';
@@ -11,9 +11,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 type Props = {
   sheetRef: any;
   onFiltersChange?: (filters: any) => void;
+  initialFilters?: any;
 };
 
-const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
+const FilterSheet2 = ({ sheetRef, onFiltersChange, initialFilters }: Props) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -27,24 +28,28 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
     size: ["2", "2.2", "2.4", "2.6", "2.8", "2.10"],
   };
 
-  // State management
+  // State management with initial filters
   const [filters, setFilters] = useState({
-    gender: null as string | null,
-    occasion: null as string | null,
-    colorAccent: null as string | null,
-    materialFinish: null as string | null,
-    sizeName: null as string | null,
+    gender: initialFilters?.gender || null as string | null,
+    occasion: initialFilters?.occasion || null as string | null,
+    colorAccent: initialFilters?.colorAccent || null as string | null,
+    materialFinish: initialFilters?.materialFinish || null as string | null,
+    sizeName: initialFilters?.sizeName || null as string | null,
+    minGrandTotal: initialFilters?.minGrandTotal || '' as string,
+    maxGrandTotal: initialFilters?.maxGrandTotal || '' as string,
   });
 
   // Reset filters and animation when sheet opens
   useEffect(() => {
     const resetFilters = () => {
       setFilters({
-        gender: null,
-        occasion: null,
-        colorAccent: null,
-        materialFinish: null,
-        sizeName: null,
+        gender: initialFilters?.gender || null,
+        occasion: initialFilters?.occasion || null,
+        colorAccent: initialFilters?.colorAccent || null,
+        materialFinish: initialFilters?.materialFinish || null,
+        sizeName: initialFilters?.sizeName || null,
+        minGrandTotal: initialFilters?.minGrandTotal || '',
+        maxGrandTotal: initialFilters?.maxGrandTotal || '',
       });
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
@@ -62,7 +67,7 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
 
     // Alternative: Reset when component mounts (if using conditional rendering)
     resetFilters();
-  }, [sheetRef]);
+  }, [sheetRef, initialFilters]);
 
   const handleFilterChange = useCallback(
     (key: keyof typeof filters, value: string | null) => {
@@ -71,9 +76,29 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
     []
   );
 
+  const handlePriceChange = useCallback(
+    (key: 'minGrandTotal' | 'maxGrandTotal', value: string) => {
+      // Allow only numbers
+      if (/^\d*$/.test(value)) {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+      }
+    },
+    []
+  );
+
   const handleApplyFilters = useCallback(() => {
     const activeFilters = Object.fromEntries(
-      Object.entries(filters).filter(([_, value]) => value !== null)
+      Object.entries(filters).filter(([key, value]) => {
+        if (['minGrandTotal', 'maxGrandTotal'].includes(key)) {
+          return value !== '' && !isNaN(parseFloat(value as string));
+        }
+        return value !== null;
+      }).map(([key, value]) => {
+        if (['minGrandTotal', 'maxGrandTotal'].includes(key)) {
+          return [key, parseFloat(value as string)];
+        }
+        return [key, value];
+      })
     );
     
     onFiltersChange?.(activeFilters);
@@ -87,6 +112,8 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
       colorAccent: null,
       materialFinish: null,
       sizeName: null,
+      minGrandTotal: '',
+      maxGrandTotal: '',
     });
     onFiltersChange?.({
       gender: null,
@@ -94,6 +121,8 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
       colorAccent: null,
       materialFinish: null,
       sizeName: null,
+      minGrandTotal: 0,
+      maxGrandTotal: 10000000000,
     });
   }, [onFiltersChange]);
 
@@ -215,6 +244,45 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange }: Props) => {
         <Animated.View style={{ opacity: fadeAnim, marginTop: 15 }}>
           <Text style={{ ...FONTS.fontMedium, fontSize: 18, color: colors.title }}>Size</Text>
           {renderFilterOptions(filterOptions.size, filters.sizeName, 'sizeName')}
+        </Animated.View>
+
+        {/* Price Range Filter */}
+        <Animated.View style={{ opacity: fadeAnim, marginTop: 15 }}>
+          <Text style={{ ...FONTS.fontMedium, fontSize: 18, color: colors.title }}>Price Range</Text>
+          <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
+            <TextInput
+              placeholder="Min Price"
+              value={filters.minGrandTotal}
+              onChangeText={(value) => handlePriceChange('minGrandTotal', value)}
+              keyboardType="numeric"
+              style={{
+                flex: 1,
+                height: 40,
+                backgroundColor: colors.card,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                color: colors.title,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            />
+            <TextInput
+              placeholder="Max Price"
+              value={filters.maxGrandTotal}
+              onChangeText={(value) => handlePriceChange('maxGrandTotal', value)}
+              keyboardType="numeric"
+              style={{
+                flex: 1,
+                height: 40,
+                backgroundColor: colors.card,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                color: colors.title,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            />
+          </View>
         </Animated.View>
 
         {/* Action Buttons */}

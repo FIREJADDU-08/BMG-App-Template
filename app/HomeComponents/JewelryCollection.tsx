@@ -104,6 +104,7 @@ const styles = StyleSheet.create({
     marginRight: 20,
     alignItems: 'center',
     width: 80,
+   
   },
   imageContainer: {
     width: 80,
@@ -121,11 +122,15 @@ const styles = StyleSheet.create({
     ...FONTS.Marcellus,
     fontSize: 13,
     textAlign: 'center',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
   },
   loadingContainer: {
     height: 150,
     justifyContent: 'center',
     alignItems: 'center',
+    
   },
   errorContainer: {
     height: 150,

@@ -39,6 +39,8 @@ export interface ProductFilters {
   colorAccent?: string;
   materialFinish?: string;
   sizeName?: string;
+  category?: string;
+  brand?: string;
   minGrandTotal?: number;
   maxGrandTotal?: number;
   searchQuery?: string;
@@ -53,11 +55,21 @@ export interface ProductServiceResponse {
   hasMore: boolean;
 }
 
-// Enhanced product service with auto pagination and better error handling
+// Enhanced pagination configuration
+interface PaginationConfig {
+  initialPageSize: number;
+  maxPageSize: number;
+  incrementSize: number;
+  fastScrollThreshold: number; // Number of fast scrolls to trigger size increase
+  scrollTimeThreshold: number; // Time in ms to consider a scroll as "fast"
+}
+
 class ProductService {
   private static instance: ProductService;
   private currentPage: number = 0;
-  private pageSize: number = 10000000;
+  private basePageSize: number = 10;
+  private currentPageSize: number = 10;
+  private maxPageSize: number = 50;
   private _hasMoreData: boolean = true;
   private totalItems: number = 0;
   private lastFilters: string = '';
@@ -66,67 +78,190 @@ class ProductService {
   private readonly MAX_RETRIES = 3;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+  // Enhanced pagination tracking
+  private scrollCount: number = 0;
+  private fastScrollCount: number = 0;
+  private lastScrollTime: number = 0;
+  private sessionStartTime: number = Date.now();
+  private userEngagement: {
+    totalScrolls: number;
+    averageScrollTime: number;
+    fastScrolls: number;
+    sessionDuration: number;
+  } = {
+    totalScrolls: 0,
+    averageScrollTime: 0,
+    fastScrolls: 0,
+    sessionDuration: 0,
+  };
+
+  // Adaptive pagination configuration
+  private paginationConfig: PaginationConfig = {
+    initialPageSize: 10,
+    maxPageSize: 50,
+    incrementSize: 10,
+    fastScrollThreshold: 3,
+    scrollTimeThreshold: 2000, // 2 seconds
+  };
+
   constructor() {
-    // Singleton pattern
     if (ProductService.instance) {
       return ProductService.instance;
     }
     ProductService.instance = this;
+    this.currentPageSize = this.paginationConfig.initialPageSize;
   }
 
   /**
-   * Reset pagination state - call when filters change
+   * Enhanced pagination reset with adaptive sizing
    */
   public resetPagination(): void {
     this.currentPage = 0;
     this._hasMoreData = true;
     this.totalItems = 0;
     this.lastFilters = '';
+    // Keep the adapted page size for better user experience
+    // this.currentPageSize = this.paginationConfig.initialPageSize; // Commented to maintain adapted size
   }
 
   /**
-   * Check if more data is available for pagination
+   * Track user scroll behavior for adaptive pagination
    */
+  public trackScrollBehavior(): void {
+    const currentTime = Date.now();
+    const timeSinceLastScroll = currentTime - this.lastScrollTime;
+    
+    this.scrollCount++;
+    this.userEngagement.totalScrolls++;
+    this.lastScrollTime = currentTime;
+
+    // Track fast scrolling
+    if (timeSinceLastScroll < this.paginationConfig.scrollTimeThreshold && timeSinceLastScroll > 100) {
+      this.fastScrollCount++;
+      this.userEngagement.fastScrolls++;
+    }
+
+    // Update session duration
+    this.userEngagement.sessionDuration = currentTime - this.sessionStartTime;
+    
+    // Calculate average scroll time
+    if (this.userEngagement.totalScrolls > 1) {
+      this.userEngagement.averageScrollTime = this.userEngagement.sessionDuration / this.userEngagement.totalScrolls;
+    }
+
+    // Adaptive page size increase logic
+    this.adaptPageSize();
+  }
+
+  /**
+   * Intelligent page size adaptation based on user behavior
+   */
+  private adaptPageSize(): void {
+    const { fastScrollThreshold, incrementSize, maxPageSize } = this.paginationConfig;
+    
+    // Increase page size if user shows high engagement
+    const shouldIncreasePageSize = (
+      this.fastScrollCount >= fastScrollThreshold ||
+      (this.scrollCount >= 5 && this.userEngagement.averageScrollTime < 3000) ||
+      (this.userEngagement.totalScrolls >= 10 && this.currentPageSize < 20)
+    );
+
+    if (shouldIncreasePageSize && this.currentPageSize < maxPageSize) {
+      const newPageSize = Math.min(this.currentPageSize + incrementSize, maxPageSize);
+      
+      if (newPageSize !== this.currentPageSize) {
+        console.log(`📈 Adapting page size: ${this.currentPageSize} → ${newPageSize} (Fast scrolls: ${this.fastScrollCount})`);
+        this.currentPageSize = newPageSize;
+        this.fastScrollCount = 0; // Reset counter after adaptation
+        
+        // Emit event for UI components to react
+        this.notifyPageSizeChange(newPageSize);
+      }
+    }
+  }
+
+  /**
+   * Notify components about page size changes
+   */
+  private notifyPageSizeChange(newSize: number): void {
+    // This could be enhanced with a proper event system
+    console.log(`🔄 Page size adapted to ${newSize} based on user behavior`);
+  }
+
+  /**
+   * Force set page size with validation
+   */
+  public setPageSize(size: number): void {
+    const validSize = Math.max(10, Math.min(size, this.paginationConfig.maxPageSize));
+    if (validSize !== this.currentPageSize) {
+      console.log(`🎛️ Manual page size change: ${this.currentPageSize} → ${validSize}`);
+      this.currentPageSize = validSize;
+      this.resetPagination();
+    }
+  }
+
+  /**
+   * Get current page size
+   */
+  public getCurrentPageSize(): number {
+    return this.currentPageSize;
+  }
+
+  /**
+   * Get user engagement metrics
+   */
+  public getUserEngagementMetrics() {
+    return {
+      ...this.userEngagement,
+      currentPageSize: this.currentPageSize,
+      totalPages: this.currentPage,
+      scrollCount: this.scrollCount,
+      fastScrollCount: this.fastScrollCount,
+    };
+  }
+
+  /**
+   * Reset user engagement tracking
+   */
+  public resetEngagementTracking(): void {
+    this.scrollCount = 0;
+    this.fastScrollCount = 0;
+    this.lastScrollTime = 0;
+    this.sessionStartTime = Date.now();
+    this.userEngagement = {
+      totalScrolls: 0,
+      averageScrollTime: 0,
+      fastScrolls: 0,
+      sessionDuration: 0,
+    };
+  }
+
+  // Existing methods with enhanced pagination
   public hasMoreData(): boolean {
     return this._hasMoreData;
   }
 
-  /**
-   * Get current page number
-   */
   public getCurrentPage(): number {
     return this.currentPage;
   }
 
-  /**
-   * Get total items count
-   */
   public getTotalItems(): number {
     return this.totalItems;
   }
 
-  /**
-   * Clear cache - useful for force refresh
-   */
   public clearCache(): void {
     this.cache.clear();
   }
 
-  /**
-   * Generate cache key from filters
-   */
   private generateCacheKey(filters: ProductFilters, page: number): string {
     const filterString = JSON.stringify({
       ...filters,
       page,
-      pageSize: this.pageSize
+      pageSize: this.currentPageSize // Use current adaptive page size
     });
-    return btoa(filterString); // Base64 encode for clean key
+    return btoa(filterString);
   }
 
-  /**
-   * Check if filters have changed
-   */
   private hasFiltersChanged(filters: ProductFilters): boolean {
     const currentFiltersString = JSON.stringify(filters);
     const changed = this.lastFilters !== currentFiltersString;
@@ -134,16 +269,12 @@ class ProductService {
     return changed;
   }
 
-  /**
-   * Build query parameters from filters
-   */
   private buildQueryParams(filters: ProductFilters, page: number): URLSearchParams {
     const queryParams = new URLSearchParams({
       page: page.toString(),
-      pageSize: this.pageSize.toString(),
+      pageSize: this.currentPageSize.toString(), // Use adaptive page size
     });
 
-    // Add filters only if they have meaningful values
     const filterMapping = {
       itemName: filters.itemName,
       subItemName: filters.subItemName,
@@ -152,6 +283,8 @@ class ProductService {
       colorAccent: filters.colorAccent,
       materialFinish: filters.materialFinish,
       sizeName: filters.sizeName,
+      category: filters.category,
+      brand: filters.brand,
       searchQuery: filters.searchQuery,
       sortBy: filters.sortBy,
     };
@@ -162,21 +295,17 @@ class ProductService {
       }
     });
 
-    // Add price range if specified
-    if (filters.minGrandTotal !== undefined && filters.minGrandTotal > 0) {
+    if (filters.minGrandTotal !== undefined && !isNaN(filters.minGrandTotal) && filters.minGrandTotal > 0) {
       queryParams.append('minGrandTotal', filters.minGrandTotal.toString());
     }
     
-    if (filters.maxGrandTotal !== undefined && filters.maxGrandTotal < 100000) {
+    if (filters.maxGrandTotal !== undefined && !isNaN(filters.maxGrandTotal) && filters.maxGrandTotal < 10000000000) {
       queryParams.append('maxGrandTotal', filters.maxGrandTotal.toString());
     }
 
     return queryParams;
   }
 
-  /**
-   * Process image paths from API response
-   */
   private processImagePaths(imagePath: string): string[] {
     if (!imagePath) return [];
 
@@ -191,7 +320,6 @@ class ProductService {
     } catch (e) {
       console.warn('⚠️ Failed to parse ImagePath:', imagePath);
       
-      // Fallback: treat as single path if it's a string
       if (typeof imagePath === 'string' && imagePath.trim() !== '') {
         const path = imagePath.trim();
         return [path.startsWith('http') ? path : `${this.BASE_IMAGE_URL}${path}`];
@@ -201,13 +329,10 @@ class ProductService {
     return [];
   }
 
-  /**
-   * Make HTTP request with retries
-   */
   private async makeRequest(url: string, retries: number = 0): Promise<Response> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout for larger page sizes
 
       const response = await fetch(url, {
         signal: controller.signal,
@@ -227,7 +352,7 @@ class ProductService {
     } catch (error) {
       if (retries < this.MAX_RETRIES) {
         console.warn(`🔄 Retry ${retries + 1}/${this.MAX_RETRIES} for request to ${url}`);
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000)); // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
         return this.makeRequest(url, retries + 1);
       }
       throw error;
@@ -235,43 +360,36 @@ class ProductService {
   }
 
   /**
-   * Enhanced getFilteredProducts with automatic pagination management
+   * Enhanced getFilteredProducts with adaptive pagination
    */
   public async getFilteredProducts(filters: ProductFilters = {}): Promise<ProductItem[]> {
     try {
-      // Check if filters changed - if so, reset pagination
       if (this.hasFiltersChanged(filters)) {
         this.resetPagination();
       }
 
-      // Check if we have more data to load
       if (!this._hasMoreData && this.currentPage > 0) {
         console.log('📄 No more data available');
         return [];
       }
 
-      // Generate cache key
       const cacheKey = this.generateCacheKey(filters, this.currentPage);
 
-      // Check cache first (for repeated requests)
       if (this.cache.has(cacheKey)) {
-        console.log('💾 Returning cached data for page', this.currentPage);
+        console.log(`💾 Returning cached data for page ${this.currentPage} (size: ${this.currentPageSize})`);
         const cachedData = this.cache.get(cacheKey)!;
         this.currentPage++;
         return cachedData;
       }
 
-      // Build API URL
       const queryParams = this.buildQueryParams(filters, this.currentPage);
       const apiUrl = `${API_BASE_URL}/product/items/filter?${queryParams.toString()}`;
 
-      console.log(`🔍 Fetching products - Page: ${this.currentPage}, Filters:`, filters);
+      console.log(`🔍 Fetching products - Page: ${this.currentPage}, Size: ${this.currentPageSize}, Filters:`, filters);
 
-      // Make API request
       const response = await this.makeRequest(apiUrl);
       const text = await response.text();
 
-      // Parse response
       let parsed: any;
       try {
         parsed = JSON.parse(text);
@@ -281,13 +399,11 @@ class ProductService {
         throw new Error('Invalid JSON response from server');
       }
 
-      // Validate response structure
       if (!parsed || typeof parsed !== 'object') {
         console.error('❌ Invalid response structure:', parsed);
         throw new Error('Invalid response format from server');
       }
 
-      // Extract data from response
       const items = parsed.data || parsed.items || parsed;
       const total = parsed.total || parsed.totalCount || 0;
 
@@ -297,66 +413,87 @@ class ProductService {
         return [];
       }
 
-      // Update pagination state
       this.totalItems = total;
       const itemsCount = items.length;
       
-      if (itemsCount < this.pageSize) {
+      // Enhanced pagination logic with adaptive sizing
+      if (itemsCount < this.currentPageSize) {
         this._hasMoreData = false;
-        console.log('📄 Reached end of data - received', itemsCount, 'items');
+        console.log(`📄 Reached end of data - received ${itemsCount}/${this.currentPageSize} items`);
       }
 
-      // Process products
-      const products: ProductItem[] = items.map((item: any) => ({
-        ...item,
-        ImagePaths: this.processImagePaths(item.ImagePath || ''),
-        // Ensure required fields have fallback values
-        SUBITEMNAME: item.SUBITEMNAME || item.ItemName || 'Unknown Product',
-        RATE: item.RATE || item.Rate || '0',
-        GrandTotal: item.GrandTotal || item.RATE || item.Rate || '0',
-        ITEMID: item.ITEMID || item.ItemId || `item_${Date.now()}_${Math.random()}`,
-        SNO: item.SNO || item.Id || `sno_${Date.now()}_${Math.random()}`,
-        Gender: item.Gender || '',
-        Occasion: item.Occasion || '',
-        MaterialFinish: item.MaterialFinish || '',
-        ColorAccents: item.ColorAccents || item.ColorAccent || '',
-        SIZENAME: item.SIZENAME || item.SizeName || null,
-        Description: item.Description || '',
-        CATNAME: item.CATNAME || item.CategoryName || '',
-        ITEMNAME: item.ITEMNAME || item.ItemName || '',
-        // Boolean fields with proper defaults
-        Best_Design: Boolean(item.Best_Design),
-        NewArrival: Boolean(item.NewArrival),
-        Featured_Products: Boolean(item.Featured_Products),
-        Top_Trending: Boolean(item.Top_Trending),
-      }));
+      // Process products with enhanced error handling
+      const products: ProductItem[] = items.map((item: any, index: number) => {
+        try {
+          return {
+            ...item,
+            ImagePaths: this.processImagePaths(item.ImagePath || ''),
+            SUBITEMNAME: item.SUBITEMNAME || item.ItemName || `Unknown Product ${index + 1}`,
+            RATE: item.RATE || item.Rate || '0',
+            GrandTotal: item.GrandTotal || item.RATE || item.Rate || '0',
+            ITEMID: item.ITEMID || item.ItemId || `item_${Date.now()}_${Math.random()}`,
+            SNO: item.SNO || item.Id || `sno_${Date.now()}_${Math.random()}`,
+            Gender: item.Gender || '',
+            Occasion: item.Occasion || '',
+            MaterialFinish: item.MaterialFinish || '',
+            ColorAccents: item.ColorAccents || item.ColorAccent || '',
+            SIZENAME: item.SIZENAME || item.SizeName || null,
+            Description: item.Description || '',
+            CATNAME: item.CATNAME || item.CategoryName || '',
+            ITEMNAME: item.ITEMNAME || item.ItemName || '',
+            Best_Design: Boolean(item.Best_Design),
+            NewArrival: Boolean(item.NewArrival),
+            Featured_Products: Boolean(item.Featured_Products),
+            Top_Trending: Boolean(item.Top_Trending),
+            // Additional fields
+            TAGNO: item.TAGNO || '',
+            GSTAmount: item.GSTAmount || '0',
+            TAGKEY: item.TAGKEY || '',
+            SIZEID: item.SIZEID || 0,
+            CollectionType: item.CollectionType || '',
+            GrossAmount: item.GrossAmount || '0',
+            Rate: item.Rate || item.RATE || '0',
+            StoneType: item.StoneType || null,
+            NETWT: item.NETWT || '0',
+            GSTPer: item.GSTPer || '0',
+          };
+        } catch (itemError) {
+          console.warn(`⚠️ Error processing item at index ${index}:`, itemError);
+          return null;
+        }
+      }).filter(Boolean) as ProductItem[];
 
-      // Cache the results
+      // Enhanced caching with size-aware keys
       if (products.length > 0) {
         this.cache.set(cacheKey, products);
         
-        // Clean old cache entries (simple LRU-like behavior)
-        if (this.cache.size > 50) {
-          const firstKey = this.cache.keys().next().value;
-          this.cache.delete(firstKey);
+        // Smart cache management based on page size
+        const maxCacheSize = Math.max(20, Math.floor(100 / (this.currentPageSize / 10)));
+        if (this.cache.size > maxCacheSize) {
+          const keysToDelete = Array.from(this.cache.keys()).slice(0, this.cache.size - maxCacheSize);
+          keysToDelete.forEach(key => this.cache.delete(key));
         }
       }
 
-      // Increment page for next request
       this.currentPage++;
 
-      console.log(`✅ Successfully fetched ${products.length} products (Page: ${this.currentPage - 1})`);
+      console.log(`✅ Successfully fetched ${products.length} products (Page: ${this.currentPage - 1}, Size: ${this.currentPageSize})`);
+      
+      // Log engagement metrics periodically
+      if (this.currentPage % 3 === 0) {
+        console.log('📊 User Engagement:', this.getUserEngagementMetrics());
+      }
+
       return products;
 
     } catch (error) {
       console.error('❌ ProductService.getFilteredProducts error:', error);
       
-      // Reset pagination on error to allow retry
       if (this.currentPage === 0) {
         this._hasMoreData = false;
       }
       
-      // Provide more specific error messages
+      // Enhanced error handling
       if (error instanceof TypeError && error.message.includes('Network request failed')) {
         throw new Error('Network connection error. Please check your internet connection.');
       } else if (error instanceof Error && error.message.includes('timeout')) {
@@ -371,9 +508,7 @@ class ProductService {
     }
   }
 
-  /**
-   * Get product details by ID
-   */
+  // Enhanced utility methods
   public async getProductDetails(sno: string): Promise<ProductItem | null> {
     try {
       const response = await this.makeRequest(`${API_BASE_URL}/product/details/${sno}`);
@@ -401,13 +536,7 @@ class ProductService {
     }
   }
 
-  /**
-   * Search products with enhanced query processing
-   */
-  public async searchProducts(
-    query: string, 
-    additionalFilters: ProductFilters = {}
-  ): Promise<ProductItem[]> {
+  public async searchProducts(query: string, additionalFilters: ProductFilters = {}): Promise<ProductItem[]> {
     const searchFilters: ProductFilters = {
       ...additionalFilters,
       searchQuery: query.trim(),
@@ -416,9 +545,6 @@ class ProductService {
     return this.getFilteredProducts(searchFilters);
   }
 
-  /**
-   * Get products by category
-   */
   public async getProductsByCategory(
     itemName: string,
     subItemName?: string,
@@ -433,91 +559,54 @@ class ProductService {
     return this.getFilteredProducts(categoryFilters);
   }
 
-  /**
-   * Get trending products
-   */
-  public async getTrendingProducts(limit: number = 20): Promise<ProductItem[]> {
-    // Reset pagination for this specific call
-    const originalPage = this.currentPage;
-    const originalHasMore = this._hasMoreData;
-    
-    this.resetPagination();
-    this.pageSize = limit;
-
-    try {
-      const products = await this.getFilteredProducts({
-        sortBy: 'popular'
-      });
-      return products;
-    } finally {
-      // Restore pagination state
-      this.currentPage = originalPage;
-      this._hasMoreData = originalHasMore;
-      this.pageSize = 10; // Reset to default
-    }
+  // Enhanced specialized methods with adaptive pagination
+  public async getTrendingProducts(limit?: number): Promise<ProductItem[]> {
+    return this.getSpecialProducts('popular', limit);
   }
 
-  /**
-   * Get new arrivals
-   */
-  public async getNewArrivals(limit: number = 20): Promise<ProductItem[]> {
+  public async getNewArrivals(limit?: number): Promise<ProductItem[]> {
+    const products = await this.getSpecialProducts('newest', limit);
+    return products.filter(product => product.NewArrival);
+  }
+
+  public async getFeaturedProducts(limit?: number): Promise<ProductItem[]> {
+    const products = await this.getSpecialProducts(undefined, limit);
+    return products.filter(product => product.Featured_Products);
+  }
+
+  private async getSpecialProducts(sortBy?: string, limit?: number): Promise<ProductItem[]> {
     const originalPage = this.currentPage;
     const originalHasMore = this._hasMoreData;
+    const originalPageSize = this.currentPageSize;
     
     this.resetPagination();
-    this.pageSize = limit;
+    if (limit) {
+      this.currentPageSize = Math.min(limit, this.paginationConfig.maxPageSize);
+    }
 
     try {
-      const products = await this.getFilteredProducts({
-        sortBy: 'newest'
-      });
-      return products.filter(product => product.NewArrival);
+      const filters: ProductFilters = {};
+      if (sortBy) {
+        filters.sortBy = sortBy as any;
+      }
+      
+      const products = await this.getFilteredProducts(filters);
+      return limit ? products.slice(0, limit) : products;
     } finally {
       this.currentPage = originalPage;
       this._hasMoreData = originalHasMore;
-      this.pageSize = 10;
+      this.currentPageSize = originalPageSize;
     }
   }
 
-  /**
-   * Get featured products
-   */
-  public async getFeaturedProducts(limit: number = 20): Promise<ProductItem[]> {
-    const originalPage = this.currentPage;
-    const originalHasMore = this._hasMoreData;
-    
-    this.resetPagination();
-    this.pageSize = limit;
-
-    try {
-      const products = await this.getFilteredProducts();
-      return products.filter(product => product.Featured_Products);
-    } finally {
-      this.currentPage = originalPage;
-      this._hasMoreData = originalHasMore;
-      this.pageSize = 10;
-    }
-  }
-
-  /**
-   * Set custom page size
-   */
-  public setPageSize(size: number): void {
-    if (size > 0 && size <= 100) {
-      this.pageSize = size;
-      this.resetPagination(); // Reset pagination when page size changes
-    }
-  }
-
-  /**
-   * Get available filter options (for dynamic filter UI)
-   */
   public async getFilterOptions(): Promise<{
     genders: string[];
     occasions: string[];
     materials: string[];
     colors: string[];
     sizes: string[];
+    categories: string[];
+    brands: string[];
   }> {
     try {
       const response = await this.makeRequest(`${API_BASE_URL}/product/filters`);
@@ -529,6 +618,8 @@ class ProductService {
         materials: data.materials || [],
         colors: data.colors || [],
         sizes: data.sizes || [],
+        categories: data.categories || [],
+        brands: data.brands || [],
       };
     } catch (error) {
       console.error('❌ Error fetching filter options:', error);
@@ -538,13 +629,12 @@ class ProductService {
         materials: [],
         colors: [],
         sizes: [],
+        categories: [],
+        brands: [],
       };
     }
   }
 }
 
-// Export singleton instance
 export const productService = new ProductService();
-
-// Export class for type checking
 export { ProductService };
