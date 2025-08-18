@@ -4,7 +4,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useTheme } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
-import { login, resetLoginState } from '../../redux/reducer/loginReducer'; // ✅ your correct slice path
+import { login, resetLoginState } from '../../redux/reducer/loginReducer';
 import { FONTS, COLORS } from '../../constants/theme';
 import { GlobalStyleSheet } from '../../constants/StyleSheet';
 import CustomInput from '../../components/Input/CustomInput';
@@ -31,46 +31,40 @@ const SignIn = ({ navigation }: SignInScreenProps) => {
     isError,
     isSuccess,
     message
-  } = useSelector((state: RootState) => state.login); // ✅ Correct full slice access
+  } = useSelector((state: RootState) => state.login);
 
   const handleLogin = () => {
     if (!contactOrEmailOrUsername || !password) {
       Alert.alert('Error', 'Please enter both email and password');
       return;
     }
-
     dispatch(login({ contactOrEmailOrUsername, password }));
   };
 
-  useEffect(() => {
-    if (isSuccess && user) {
-      navigation.navigate('DrawerNavigation', { screen: 'Home' });
-      dispatch(resetLoginState());
+useEffect(() => {
+  if (isSuccess && user) {
+    navigation.navigate('DrawerNavigation', { screen: 'Home' });
+    dispatch(resetLoginState());
+  }
+
+  if (isError) {
+    if (message === 'Login does not exist, please sign up') {
+      Alert.alert(
+        'User Not Found',
+        message,
+        [
+          { text: 'Go to Sign Up', onPress: () => navigation.navigate('SignUp') },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    } else {
+      // ✅ Always show the exact API-provided message
+      Alert.alert('Login Failed', message || 'Something went wrong, please try again');
     }
 
-    if (isError) {
-      if (message === 'Login does not exist, please sign up') {
-        Alert.alert(
-          'User Not Found',
-          message,
-          [
-            {
-              text: 'Go to Sign Up',
-              onPress: () => navigation.navigate('SignUp')
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel'
-            }
-          ]
-        );
-      } else {
-        Alert.alert('Login Failed', message || 'Invalid credentials');
-      }
-
-      dispatch(resetLoginState());
-    }
-  }, [isSuccess, isError, message]);
+    dispatch(resetLoginState());
+  }
+}, [isSuccess, isError, message]);
 
 
   return (
@@ -143,7 +137,7 @@ const SignIn = ({ navigation }: SignInScreenProps) => {
                   ...FONTS.fontRegular,
                   fontSize: 15,
                   color: colors.title
-                }}>Email Address<Text style={{ color: '#FF0000' }}>*</Text></Text>
+                }}>Mobile No / Email <Text style={{ color: '#FF0000' }}>*</Text></Text>
                 <CustomInput value={contactOrEmailOrUsername} onChangeText={setEmail} />
               </View>
 

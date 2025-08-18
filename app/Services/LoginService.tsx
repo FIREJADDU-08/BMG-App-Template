@@ -20,7 +20,15 @@ export const loginUser = async (userData: LoginPayload) => {
       };
     }
 
-    const data = await response.json(); // No `.body` — your API returns the object directly
+    const data = await response.json();
+
+    // ✅ Handle API error messages even with 200 status
+    if (data.status === 'error') {
+      throw {
+        type: 'LOGIN_FAILED',
+        message: data.message || 'Invalid username or password',
+      };
+    }
 
     if (!response.ok) {
       throw {
@@ -30,12 +38,12 @@ export const loginUser = async (userData: LoginPayload) => {
     }
 
     // Store values in AsyncStorage
-    await AsyncStorage.setItem('user_id', data.id.toString());
-    await AsyncStorage.setItem('user_token', data.token);
-    await AsyncStorage.setItem('user_name', data.username);
-    await AsyncStorage.setItem('user_email', data.email);
-    await AsyncStorage.setItem('user_contact', data.contact);
-    await AsyncStorage.setItem('user_roles', JSON.stringify(data.roles));
+    await AsyncStorage.setItem('user_id', data.id?.toString() || '');
+    await AsyncStorage.setItem('user_token', data.token || '');
+    await AsyncStorage.setItem('user_name', data.username || '');
+    await AsyncStorage.setItem('user_email', data.email || '');
+    await AsyncStorage.setItem('user_contact', data.contact || '');
+    await AsyncStorage.setItem('user_roles', JSON.stringify(data.roles || []));
     await AsyncStorage.setItem('user_data', JSON.stringify(data));
 
     console.log("User logged in:", data.username);

@@ -58,10 +58,10 @@ const CardStyle1 = ({
     const handleWishlistPress = () => {
         if (wishlistActive) {
             dispatch(removeProductFromWishList(id));
-            Alert.alert('Removed', 'Item removed from wishlist');
+            // Alert.alert('Removed', 'Item removed from wishlist');
         } else {
             dispatch(addProductToWishList(product));
-            Alert.alert('Added', 'Item added to wishlist');
+            // Alert.alert('Added', 'Item added to wishlist');
         }
     };
 

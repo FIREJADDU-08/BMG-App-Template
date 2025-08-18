@@ -34,8 +34,7 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
   const dispatch = useDispatch();
-  const [imageError, setImageError] = useState(false);
-
+  
   const [product, setProduct] = useState<any>(null);
   const [activeSize, setActiveSize] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,9 +43,54 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const [isInCart, setIsInCart] = useState<boolean>(false);
   const [cartLoading, setCartLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track which images have failed to load
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [mainImageError, setMainImageError] = useState(false);
 
   const cartItems = useSelector((state: RootState) => state.cart.items);
   const sno = route?.params?.sno || '';
+  console.log('Product SNO:', sno);
+
+  // Enhanced image processing function
+  const processImagePath = (imagePath: string | string[]) => {
+    try {
+      let parsedImages: string[] = [];
+      
+      if (Array.isArray(imagePath)) {
+        // Already an array
+        parsedImages = imagePath;
+      } else if (typeof imagePath === 'string') {
+        if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
+          // JSON string format
+          parsedImages = JSON.parse(imagePath);
+        } else {
+          // Single image path
+          parsedImages = [imagePath];
+        }
+      }
+
+      // Filter out empty or invalid paths and add base URL
+      const validImages = parsedImages
+        .filter(img => img && typeof img === 'string' && img.trim() !== '')
+        .map(img => {
+          const cleanImg = img.trim();
+          // Handle different base URL formats
+          if (cleanImg.startsWith('http')) {
+            return cleanImg;
+          } else if (cleanImg.startsWith('/uploads')) {
+            return `https://app.bmgjewellers.com${cleanImg}`;
+          } else {
+            return `https://app.bmgjewellers.com/uploads/${cleanImg}`;
+          }
+        });
+
+      return validImages;
+    } catch (err) {
+      console.warn('⚠️ ImagePath processing failed:', err);
+      return [];
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -61,7 +105,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
         }
 
         const text = await response.text();
-
         const data = text ? JSON.parse(text) : null;
         const prod = Array.isArray(data) ? data[0] : data?.result?.[0] || data;
 
@@ -69,15 +112,16 @@ const ProductDetails = ({ navigation, route }: Props) => {
           setProduct(prod);
           if (prod.SIZENAME) setActiveSize(prod.SIZENAME);
 
-          try {
-            const parsedImages = prod.ImagePath ? JSON.parse(prod.ImagePath) : [];
-            if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-              const fullImageArray = parsedImages.map((img: string) => `https://app.bmgjewellers.com${img}`);
-              setImageArray(fullImageArray);
-              setSelectedImage(fullImageArray[0]);
-            }
-          } catch (err) {
-            console.warn('⚠️ ImagePath parse failed:', err);
+          // Process images using enhanced function
+          const processedImages = processImagePath(prod.ImagePath);
+          
+          if (processedImages.length > 0) {
+            setImageArray(processedImages);
+            setSelectedImage(processedImages[0]);
+          } else {
+            console.warn('⚠️ No valid images found');
+            setImageArray([]);
+            setSelectedImage('');
           }
         } else {
           setError('No product data available');
@@ -114,6 +158,32 @@ const ProductDetails = ({ navigation, route }: Props) => {
     checkCartStatus();
   }, [product, cartItems]);
 
+  // Handle individual image errors
+  const handleImageError = (imageUri: string) => {
+    setFailedImages(prev => new Set([...prev, imageUri]));
+    
+    // If the current selected image fails, try to select another one
+    if (imageUri === selectedImage) {
+      const workingImages = imageArray.filter(img => !failedImages.has(img) && img !== imageUri);
+      if (workingImages.length > 0) {
+        setSelectedImage(workingImages[0]);
+      } else {
+        setMainImageError(true);
+      }
+    }
+  };
+
+  // Handle main image error
+  const handleMainImageError = () => {
+    setMainImageError(true);
+    // Try to find another working image
+    const workingImages = imageArray.filter(img => !failedImages.has(img) && img !== selectedImage);
+    if (workingImages.length > 0) {
+      setSelectedImage(workingImages[0]);
+      setMainImageError(false);
+    }
+  };
+
   const handleAddToCart = async () => {
     if (!product || !product.SNO || cartLoading) return;
 
@@ -121,7 +191,7 @@ const ProductDetails = ({ navigation, route }: Props) => {
     try {
       const cartPayload = {
         itemTagSno: product.SNO,
-        imagePath: selectedImage,
+        imagePath: selectedImage || (imageArray.length > 0 ? imageArray[0] : ''),
       };
 
       await dispatch(addItemToCart(cartPayload)).unwrap();
@@ -145,7 +215,7 @@ const ProductDetails = ({ navigation, route }: Props) => {
       try {
         const cartPayload = {
           itemTagSno: product.SNO,
-          imagePath: selectedImage,
+          imagePath: selectedImage || (imageArray.length > 0 ? imageArray[0] : ''),
         };
 
         await dispatch(addItemToCart(cartPayload)).unwrap();
@@ -234,6 +304,9 @@ const ProductDetails = ({ navigation, route }: Props) => {
     );
   }
 
+  // Get the working images for thumbnails
+  const workingImages = imageArray.filter(img => !failedImages.has(img));
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ position: 'absolute', width: '100%', zIndex: 99, top: Platform.OS === 'ios' ? 47 : 0 }}>
@@ -252,28 +325,45 @@ const ProductDetails = ({ navigation, route }: Props) => {
           <Image
             style={{ width: '100%', aspectRatio: 1 / 1.2, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 }}
             source={
-              imageError || !selectedImage
+              mainImageError || !selectedImage || failedImages.has(selectedImage)
                 ? fallbackImage
                 : { uri: selectedImage }
             }
-            onError={() => setImageError(true)}
+            onError={handleMainImageError}
             resizeMode="cover"
           />
-
+          
+          {/* No Image Available Overlay */}
+          {(mainImageError || (!selectedImage && imageArray.length === 0)) && (
+            <View style={{
+              position: 'absolute',
+              bottom: 10,
+              left: 10,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 5,
+            }}>
+              <Text style={{ color: 'white', fontSize: 12 }}>No Image Available</Text>
+            </View>
+          )}
         </View>
 
-        {/* Thumbnails */}
-        {Array.isArray(imageArray) && imageArray.length > 1 && (
+        {/* Thumbnails - Only show working images */}
+        {workingImages.length > 1 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={{ marginTop: 10, paddingHorizontal: 10 }}
             contentContainerStyle={{ paddingBottom: 10 }}
           >
-            {imageArray.map((uri, index) => (
+            {workingImages.map((uri, index) => (
               <TouchableOpacity
-                key={index}
-                onPress={() => setSelectedImage(uri)}
+                key={`${uri}-${index}`}
+                onPress={() => {
+                  setSelectedImage(uri);
+                  setMainImageError(false);
+                }}
                 style={{
                   marginRight: 10,
                   borderWidth: selectedImage === uri ? 2 : 0,
@@ -286,11 +376,7 @@ const ProductDetails = ({ navigation, route }: Props) => {
                   source={{ uri }}
                   style={{ width: 70, height: 70, borderRadius: 10 }}
                   resizeMode="cover"
-                  onError={(e) => {
-                    e.currentTarget.setNativeProps({
-                      src: [fallbackImage],
-                    });
-                  }}
+                  onError={() => handleImageError(uri)}
                 />
               </TouchableOpacity>
             ))}

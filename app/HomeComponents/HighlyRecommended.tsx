@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  StyleSheet
 } from 'react-native';
 import { GlobalStyleSheet } from '../constants/StyleSheet';
 import { COLORS, FONTS, SIZES } from '../constants/theme';
@@ -21,7 +22,6 @@ import { getNewArrivalProducts } from '../Services/NewArrivalService';
 import { IMAGES } from '../constants/Images';
 import { RootState } from '../redux/store';
 import { Feather } from '@expo/vector-icons';
-import { Alert } from 'react-native';
 
 type Props = {
   navigation: StackNavigationProp<RootStackParamList, 'Home'>;
@@ -44,20 +44,22 @@ const HighlyRecommendedSection = ({
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
+        setError(null);
         await Promise.all([
           dispatch(fetchCartItems()),
           dispatch(fetchWishList()),
           fetchNewArrivals()
         ]);
-      } catch (error) {
-        console.error('Initial data loading error:', error);
-        Alert.alert('Error', 'Failed to load initial data');
+      } catch (err) {
+        console.error('Initial data loading error:', err);
+        setError('Failed to load products. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -65,79 +67,56 @@ const HighlyRecommendedSection = ({
     loadInitialData();
   }, [dispatch]);
 
-  // Fetch product data
   const fetchNewArrivals = useCallback(async () => {
     try {
       const data = await getNewArrivalProducts();
       setProducts(data || []);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      throw error;
+    } catch (err) {
+      console.error('Failed to load products:', err);
+      throw err;
     }
   }, []);
 
-  // Handle pull-to-refresh
   const handleRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
+      setError(null);
       await Promise.all([
         fetchNewArrivals(),
         dispatch(fetchWishList()),
         dispatch(fetchCartItems())
       ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to refresh data');
+    } catch (err) {
+      console.error('Refresh error:', err);
+      setError('Failed to refresh data');
     } finally {
       setRefreshing(false);
     }
   }, [fetchNewArrivals, dispatch]);
 
-  // Toggle wishlist status
   const toggleWishList = useCallback(async (product: any) => {
     try {
       const exists = wishList.some((item) => item.SNO === product.SNO);
       
       if (exists) {
-        await dispatch(removeProductFromWishList(product.SNO)).unwrap();
-        // Alert.alert('Success', 'Removed from wishlist');
+        await dispatch(removeProductFromWishList(product.SNO));
       } else {
-        await dispatch(addProductToWishList(product)).unwrap();
-        // Alert.alert('Success', 'Added to wishlist');
+        await dispatch(addProductToWishList(product));
       }
-      
-      // Refresh wishlist data
-      await dispatch(fetchWishList());
-    } catch (error) {
-      console.error('Wishlist error:', error);
-      Alert.alert('Error', 'Failed to update wishlist');
+      dispatch(fetchWishList());
+    } catch (err) {
+      console.error('Wishlist error:', err);
     }
   }, [dispatch, wishList]);
 
-  // Handle cart actions (add/remove)
   const handleCartAction = useCallback(async (product: any) => {
     try {
       const existingItem = cart.find((item) => item.itemTagSno === product.SNO);
       
       if (existingItem) {
-        // Show removal confirmation
-        Alert.alert(
-          'Remove Item',
-          'This item is in your cart. Remove it?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Remove',
-              style: 'destructive',
-              onPress: async () => {
-                await dispatch(removeItemFromCart(existingItem.sno)).unwrap();
-                await dispatch(fetchCartItems());
-                // Alert.alert('Success', 'Removed from cart');
-              }
-            }
-          ]
-        );
+        await dispatch(removeItemFromCart(existingItem.sno));
+        dispatch(fetchCartItems());
       } else {
-        // Add to cart logic
         let imageUrl = '';
         try {
           if (product.ImagePath) {
@@ -160,20 +139,17 @@ const HighlyRecommendedSection = ({
           imagePath: imageUrl,
           quantity: 1,
           price: parseFloat(product.GrandTotal || product.GrossAmount || '0'),
-          productData: product // Include full product details
+          productData: product
         };
 
-        await dispatch(addItemToCart(cartPayload)).unwrap();
-        await dispatch(fetchCartItems());
-        // Alert.alert('Success', 'Added to cart');
+        await dispatch(addItemToCart(cartPayload));
+        dispatch(fetchCartItems());
       }
-    } catch (error) {
-      console.error('Cart error:', error);
-      Alert.alert('Error', 'Failed to update cart');
+    } catch (err) {
+      console.error('Cart error:', err);
     }
   }, [dispatch, cart]);
 
-  // Navigate to product details
   const navigateToProductDetails = useCallback((product: any) => {
     navigation.navigate('ProductDetails', { 
       sno: product.SNO,
@@ -181,7 +157,6 @@ const HighlyRecommendedSection = ({
     });
   }, [navigation]);
 
-  // Process image URL
   const getImageUrl = useCallback((product: any): string => {
     try {
       if (!product.ImagePath || product.ImagePath.length < 5) return IMAGES.item11;
@@ -202,32 +177,49 @@ const HighlyRecommendedSection = ({
     }
   }, []);
 
-  // Memoize products for performance
   const memoizedProducts = useMemo(() => products, [products]);
 
-  // Loading state
   if (loading && !refreshing) {
     return (
-      <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ marginTop: 10, color: colors.text }}>Loading products...</Text>
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Loading products...
+        </Text>
       </View>
     );
   }
 
-  // Empty state
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Feather name="alert-circle" size={40} color={COLORS.danger} />
+        <Text style={[styles.errorText, { color: colors.title }]}>
+          {error}
+        </Text>
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+        >
+          <Feather name="refresh-cw" size={20} color={COLORS.primary} />
+          <Text style={styles.refreshText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (!loading && products.length === 0) {
     return (
-      <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+      <View style={styles.emptyContainer}>
         <Feather name="package" size={40} color={colors.text} />
-        <Text style={{ marginTop: 15, ...FONTS.h5, color: colors.title }}>
+        <Text style={[styles.emptyTitle, { color: colors.title }]}>
           No products found
         </Text>
-        <Text style={{ marginTop: 5, color: colors.text }}>
+        <Text style={[styles.emptyText, { color: colors.text }]}>
           Check back later for new arrivals
         </Text>
         <TouchableOpacity 
-          style={{ marginTop: 15, padding: 10 }}
+          style={styles.refreshButton}
           onPress={handleRefresh}
         >
           <Feather name="refresh-cw" size={20} color={COLORS.primary} />
@@ -237,54 +229,43 @@ const HighlyRecommendedSection = ({
   }
 
   return (
-    <View style={[GlobalStyleSheet.container, { paddingTop: 25 }]}>
-      {/* Header Section */}
-      <View style={{ 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        marginBottom: 15
-      }}>
-        <Text style={{ 
-          ...FONTS.Marcellus, 
-          fontSize: 24, 
-          color: colors.title,
-          lineHeight: 30
-        }}>
+    <View style={[GlobalStyleSheet.container, styles.container]}>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.title }]}>
           {title}
         </Text>
         
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {showSeeAll && (
+        <View style={styles.headerActions}>
+          {/* {showSeeAll && (
             <TouchableOpacity 
               onPress={() => navigation.navigate('RecommendedProducts')}
-              style={{ marginRight: 15 }}
+              style={styles.seeAllButton}
             >
-              <Text style={{ 
-                ...FONTS.fontRegular, 
-                fontSize: 13, 
-                color: colors.title 
-              }}>
+              <Text style={[styles.seeAllText, { color: colors.title }]}>
                 See All
               </Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={handleRefresh}>
+          )} */}
+          {/* <TouchableOpacity onPress={handleRefresh}>
             <Feather name="refresh-cw" size={20} color={colors.title} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
 
-      {/* Products ScrollView */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ 
-          paddingHorizontal: 15,
-          paddingBottom: 20
-        }}
+        contentContainerStyle={styles.productsContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
       >
-        <View style={{ flexDirection: 'row', gap: 15 }}>
+        <View style={styles.productsList}>
           {memoizedProducts.map((product) => {
             const inWishList = wishList.some((item) => item.SNO === product.SNO);
             const cartItem = cart.find((item) => item.itemTagSno === product.SNO);
@@ -293,15 +274,13 @@ const HighlyRecommendedSection = ({
             return (
               <View
                 key={`product-${product.SNO}`}
-                style={{ width: SIZES.width / 2.3 }}
+                style={styles.productWrapper}
               >
                 <CardStyle1
                   id={product.SNO}
                   image={imageUrl}
                   title={product.ITEMNAME || 'Product'}
                   price={`₹${product.GrandTotal || product.GrossAmount || 0}`}
-                  // discount={`₹${product.GrossAmount || 0}`}
-                  // review={`(${product.GRSWT}g • ${product.PURITY}% Pure)`}
                   onPress={() => navigateToProductDetails(product)}
                   onPress1={() => toggleWishList(product)}
                   onPress2={() => handleCartAction(product)}
@@ -317,21 +296,111 @@ const HighlyRecommendedSection = ({
         </View>
       </ScrollView>
 
-      {/* Decorative Border */}
-      <View style={{ 
-        top: 60, 
-        left: 0, 
-        position: 'absolute', 
-        zIndex: -1 
-      }}>
+      <View style={styles.decorativeBorder}>
         <Image 
           source={require('../assets/images/border2.png')} 
-          style={{ width: '100%', height: '100%' }}
+          style={styles.borderImage}
           resizeMode="contain"
         />
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: 25
+  },
+  loadingContainer: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  loadingText: {
+    marginTop: 10,
+    ...FONTS.fontRegular
+  },
+  errorContainer: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  errorText: {
+    marginTop: 15,
+    ...FONTS.h5,
+    textAlign: 'center'
+  },
+  emptyContainer: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  emptyTitle: {
+    marginTop: 15,
+    ...FONTS.h5
+  },
+  emptyText: {
+    marginTop: 5,
+    ...FONTS.fontRegular,
+    textAlign: 'center'
+  },
+  refreshButton: {
+    marginTop: 15,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  refreshText: {
+    marginLeft: 5,
+    color: COLORS.primary,
+    ...FONTS.fontRegular
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15
+  },
+  title: {
+    ...FONTS.Marcellus,
+    fontSize: 24,
+    lineHeight: 30
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  seeAllButton: {
+    marginRight: 15
+  },
+  seeAllText: {
+    ...FONTS.fontRegular,
+    fontSize: 13
+  },
+  productsContainer: {
+    paddingHorizontal: 15,
+    paddingBottom: 20
+  },
+  productsList: {
+    flexDirection: 'row',
+    gap: 15
+  },
+  productWrapper: {
+    width: SIZES.width / 2.3
+  },
+  decorativeBorder: {
+    top: 60,
+    left: 0,
+    position: 'absolute',
+    zIndex: -1
+  },
+  borderImage: {
+    width: '100%',
+    height: '100%'
+  }
+});
 
 export default HighlyRecommendedSection;

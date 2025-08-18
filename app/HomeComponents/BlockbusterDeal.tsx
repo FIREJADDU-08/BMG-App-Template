@@ -9,6 +9,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
 import { fetchFeaturedProducts } from '../Services/FeatureService';
 import { ImageSourcePropType } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { addProductToWishList, removeProductFromWishList, fetchWishList } from '../redux/reducer/wishListReducer';
+import { Feather } from '@expo/vector-icons';
 
 type FeaturedProduct = {
   SNO: string;
@@ -28,6 +31,9 @@ type BlockbusterDealsProps = {
 
 const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
   const { colors } = useTheme();
+  const dispatch = useDispatch();
+  const { wishList } = useSelector((state: any) => state.wishList);
+  
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +55,33 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
 
   useEffect(() => {
     loadFeaturedProducts();
-  }, []);
+    dispatch(fetchWishList());
+  }, [dispatch]);
+
+  const toggleWishlist = async (product: FeaturedProduct) => {
+    try {
+      const isInWishlist = wishList.some((item: any) => item.SNO === product.SNO);
+      
+      if (isInWishlist) {
+        await dispatch(removeProductFromWishList(product.SNO));
+      } else {
+        await dispatch(addProductToWishList({
+          SNO: product.SNO,
+          SUBITEMNAME: product.SUBITEMNAME,
+          GrandTotal: product.GrandTotal,
+          ImagePath: product.ImagePath,
+          // Add other necessary product fields
+        }));
+      }
+      dispatch(fetchWishList());
+    } catch (err) {
+      console.error('Wishlist error:', err);
+    }
+  };
+
+  const isInWishlist = (productId: string) => {
+    return wishList.some((item: any) => item.SNO === productId);
+  };
 
   return (
     <View style={{ backgroundColor: colors.background, width: '100%' }}>
@@ -88,7 +120,7 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
           <ImageSwper2
             data={featuredProducts.map((product) => ({
               id: product.SNO,
-              image: product.mainImage, // ✅ Already RN-safe (no need for { uri: ... })
+              image: product.mainImage,
               title: product.SUBITEMNAME || 'Jewelry Item',
               price: `${product.GrandTotal}`,
               discount: product.Discount
@@ -96,10 +128,20 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
                 : '',
               offer: product.Offer || 'Special Offer',
               delivery: product.DeliveryOption || 'Free delivery',
+              isFavorite: isInWishlist(product.SNO),
+              onFavoritePress: () => toggleWishlist(product),
             }))}
             onProductPress={(id) =>
               navigation.navigate('ProductDetails', { SNO: id })
             }
+            favoriteIcon={(
+              <Feather 
+                name="heart" 
+                size={20} 
+                color={COLORS.danger} 
+                fill={COLORS.danger}
+              />
+            )}
           />
         </View>
       ) : (

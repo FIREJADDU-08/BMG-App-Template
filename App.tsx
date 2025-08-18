@@ -5,6 +5,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import store from './app/redux/store';
 import StackNavigator from './app/Navigations/StackNavigator';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ToastComponent from './app/Config/Toast';
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
       <PaperProvider>
         <SafeAreaView style={{ flex: 1 }}>
           <NavigationContainer theme={DefaultTheme}>
+            <ToastComponent />
             <StackNavigator />
           </NavigationContainer>
         </SafeAreaView>

@@ -56,6 +56,7 @@ const PeopleAlsoViewed = React.lazy(() => import('../../HomeComponents/PeopleVie
 const CartItemsPreview = React.lazy(() => import('../../HomeComponents/CartPreview'));
 const BlockbusterDeals = React.lazy(() => import('../../HomeComponents/BlockbusterDeal'));
 const BestDesigns = React.lazy(() => import('../../HomeComponents/BestDesign'));
+const BudgetCategories = React.lazy(() => import('../../HomeComponents/BudgetCategory'));   
 
 // Constants
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -573,8 +574,12 @@ const renderSearchBar = () => (
         </LazyWrapper>
 
         <LazyWrapper>
-          <PeopleAlsoViewed navigation={navigation} />
+          <BudgetCategories />
         </LazyWrapper>
+
+        {/* <LazyWrapper>
+          <PeopleAlsoViewed navigation={navigation} />
+        </LazyWrapper> */}
 
         <LazyWrapper>
           <CartItemsPreview 
@@ -590,7 +595,7 @@ const renderSearchBar = () => (
           <FestivalSlider />
         </LazyWrapper>
 
-        {state.errors.featured ? (
+        {/* {state.errors.featured ? (
           <ErrorComponent 
             message={state.errors.featured}
             onRetry={loadFeaturedProducts}
@@ -602,9 +607,9 @@ const renderSearchBar = () => (
               navigation={navigation}
             />
           </LazyWrapper>
-        )}
+        )} */}
 
-        {state.errors.bestDesign ? (
+        {/* {state.errors.bestDesign ? (
           <ErrorComponent 
             message={state.errors.bestDesign}
             onRetry={loadBestDesignProducts}
@@ -622,7 +627,7 @@ const renderSearchBar = () => (
               loadBestDesignProducts={loadBestDesignProducts}
             />
           </LazyWrapper>
-        )}
+        )} */}
 
         <LazyWrapper>
           <FeaturedNowSection navigation={navigation} />

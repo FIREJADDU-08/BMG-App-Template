@@ -74,7 +74,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
     // Ensure addresses are fetched when the screen mounts
     React.useEffect(() => {
         getAddresses();
-    }, [getAddresses]);
+    }, []);
 
     // Find the selected or default address
     const selectedAddress = React.useMemo(() => {

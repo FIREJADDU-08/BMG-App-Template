@@ -1,7 +1,7 @@
-// services/orderService.js
 import { API_BASE_URL } from "../Config/baseUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const API_IMAGE_URL='https://app.bmgjewellers.com'
 export const fetchOrderHistory = async () => {
   try {
     const token = await AsyncStorage.getItem("user_token");
@@ -32,50 +32,66 @@ export const fetchOrderHistory = async () => {
 };
 
 const processOrderItems = (orderItems) => {
-  if (!orderItems || !Array.isArray(orderItems)) return [];
+  if (!orderItems || !Array.isArray(orderItems)) {
+    console.warn("Invalid orderItems data:", orderItems);
+    return [];
+  }
 
-  return orderItems.map((item) => {
+  return orderItems.map((item, index) => {
     try {
       const imageUrls = processImagePaths(item.image_path);
+      console.log(`Processed image URLs for item ${index}:`, imageUrls);
       return {
         ...item,
-        imageUrls: imageUrls.length > 0 ? imageUrls : [null], // Ensure at least one item
+        imageUrls: imageUrls.length > 0 ? imageUrls : [null],
       };
     } catch (error) {
-      console.warn("Failed to process order item images:", error);
+      console.warn(`Failed to process order item images for item ${index}:`, error);
       return {
         ...item,
-        imageUrls: [null], // Fallback to null
+        imageUrls: [null],
       };
     }
   });
 };
 
 const processImagePaths = (imagePath) => {
-  if (!imagePath) return [];
-  
+  if (!imagePath) {
+    console.warn("No image path provided");
+    return [];
+  }
+
   try {
-    // Handle string or already parsed JSON
-    const images = typeof imagePath === 'string' 
-      ? JSON.parse(imagePath) 
+    const parsed = typeof imagePath === "string" && imagePath.trim().startsWith("[")
+      ? JSON.parse(imagePath)
       : imagePath;
-    
-    // Ensure we have an array
-    const imageArray = Array.isArray(images) ? images : [images];
-    
-    return imageArray.map((path) => {
-      if (!path) return null;
-      
-      const cleanPath = String(path)
-        .trim()
-        .replace(/^['"]|['"]$/g, '');
-      
-      if (!cleanPath) return null;
-      
-      return cleanPath.startsWith('http') 
-        ? cleanPath 
-        : `${API_BASE_URL}${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`;
-    }).filter(Boolean); // Remove any null values
+
+    const paths = Array.isArray(parsed) ? parsed : [parsed];
+
+    const processedPaths = paths
+      .map((path, index) => {
+        if (!path) {
+          console.warn(`Empty path at index ${index}`);
+          return null;
+        }
+
+        const cleanPath = String(path).trim().replace(/^['"]|['"]$/g, "");
+
+        if (!cleanPath) {
+          console.warn(`Invalid path at index ${index}:`, cleanPath);
+          return null;
+        }
+
+        const fullPath = cleanPath.startsWith("http")
+          ? cleanPath
+          : `${API_IMAGE_URL}${cleanPath.startsWith("/") ? "" : "/"}${cleanPath}`;
+        
+        console.log(`Processed path ${index}:`, fullPath);
+        return fullPath;
+      })
+      .filter((path) => path !== null);
+
+    return processedPaths;
   } catch (error) {
     console.warn("Image path processing error:", error);
     return [];

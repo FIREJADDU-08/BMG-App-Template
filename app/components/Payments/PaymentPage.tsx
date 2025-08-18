@@ -78,40 +78,40 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
     const { products, selectedAddress, orderSummary } = route.params || {};
 
     const paymentMethods: PaymentMethod[] = [
-        {
-            id: 'razorpay',
-            name: 'Razorpay Gateway',
-            icon: 'credit-card',
-            description: 'Pay with Credit/Debit Card, UPI, Net Banking',
-            enabled: true
-        },
-        {
-            id: 'upi',
-            name: 'UPI Payment',
-            icon: 'smartphone',
-            description: 'Pay with Google Pay, PhonePe, Paytm',
-            enabled: true
-        },
+        // {
+        //     id: 'razorpay',
+        //     name: 'Razorpay Gateway',
+        //     icon: 'credit-card',
+        //     description: 'Pay with Credit/Debit Card, UPI, Net Banking',
+        //     enabled: true
+        // },
+        // {
+        //     id: 'upi',
+        //     name: 'UPI Payment',
+        //     icon: 'smartphone',
+        //     description: 'Pay with Google Pay, PhonePe, Paytm',
+        //     enabled: true
+        // },
         {
             id: 'netbanking',
             name: 'Net Banking',
-            icon: 'dollar-sign',
+            icon: 'smartphone',
             description: 'Pay directly from your bank account',
             enabled: true
         },
-        {
-            id: 'wallet',
-            name: 'Digital Wallet',
-            icon: 'credit-card',
-            description: 'Paytm, PhonePe, Amazon Pay',
-            enabled: true
-        },
+        // {
+        //     id: 'wallet',
+        //     name: 'Digital Wallet',
+        //     icon: 'credit-card',
+        //     description: 'Paytm, PhonePe, Amazon Pay',
+        //     enabled: true
+        // },
         {
             id: 'cod',
             name: 'Cash on Delivery',
             icon: 'truck',
             description: 'Pay when your order is delivered',
-            enabled: false // Disabled for jewelry
+            enabled: true // Disabled for jewelry
         }
     ];
 
@@ -217,7 +217,7 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                 // Handle different payment methods
                 if (selectedPaymentMethod === 'cod') {
                     // For COD, directly navigate to success screen
-                    navigation.navigate('OrderSuccess', {
+                    navigation.navigate('Myorder', {
                         orderDetails: {
                             orderId: response.orderId,
                             items: products,

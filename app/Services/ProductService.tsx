@@ -57,7 +57,7 @@ export interface ProductServiceResponse {
 class ProductService {
   private static instance: ProductService;
   private currentPage: number = 0;
-  private pageSize: number = 10;
+  private pageSize: number = 10000000;
   private _hasMoreData: boolean = true;
   private totalItems: number = 0;
   private lastFilters: string = '';

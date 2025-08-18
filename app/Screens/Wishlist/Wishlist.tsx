@@ -125,7 +125,7 @@ const Wishlist = ({ navigation }: WishlistScreenProps) => {
         title={data.ITEMNAME || 'Product'}
         price={`₹${data.GrandTotal || data.GrossAmount || 0}`}
         image={imageUrl}
-        discount={`₹${data.GrossAmount || 0}`}
+        // discount={`₹${data.GrossAmount || 0}`}
         onPress1={() => handleRemove(data.SNO)}
         onPress2={() => handleAddToCart(data, imageUrl)}
         onPress={() => navigation.navigate('ProductDetails', { sno: data.SNO })}

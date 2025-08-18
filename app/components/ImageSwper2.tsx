@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
+import Animated, { 
+  interpolate, 
+  useAnimatedStyle, 
+  useSharedValue, 
+  useAnimatedScrollHandler 
+} from 'react-native-reanimated';
 import CardStyle1 from './Card/CardStyle1';
 import { useNavigation } from '@react-navigation/native';
-import { useDispatch } from 'react-redux';
-import { addTowishList } from '../redux/reducer/wishListReducer';
+import { useDispatch, useSelector } from 'react-redux';
+import { addProductToWishList, removeProductFromWishList } from '../redux/reducer/wishListReducer';
+import { Feather } from '@expo/vector-icons';
+import { COLORS } from '../constants/theme';
 
 interface ProductItem {
   id: string | number;
+  SNO?: string; // Added for wishlist compatibility
   image?: string;
   title?: string;
   price?: string;
@@ -18,11 +26,15 @@ interface ProductItem {
 
 const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
   const [newData] = useState([{ key: 'space-left' }, ...data, { key: 'space-right' }]);
-
   const { width } = useWindowDimensions();
   const SIZE = width * 0.6;
   const SPACER = (width - SIZE) / 2;
   const x = useSharedValue(0);
+  const dispatch = useDispatch();
+  const navigation = useNavigation<any>();
+  
+  // Get wishlist from Redux store
+  const { wishList } = useSelector((state: any) => state.wishList);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -30,11 +42,23 @@ const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
     },
   });
 
-  const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
+  // Check if item is in wishlist
+  const isInWishlist = (productId: string | number) => {
+    return wishList.some((item: any) => item.SNO === productId || item.id === productId);
+  };
 
-  const addItemToWishList = (item: ProductItem) => {
-    dispatch(addTowishList(item));
+  // Toggle wishlist status
+  const toggleWishlist = (item: ProductItem) => {
+    const productId = item.SNO || item.id;
+    if (isInWishlist(productId)) {
+      dispatch(removeProductFromWishList(productId));
+    } else {
+      dispatch(addProductToWishList({
+        SNO: productId.toString(),
+        ...item,
+        // Add other necessary product fields
+      }));
+    }
   };
 
   return (
@@ -46,6 +70,7 @@ const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
       snapToInterval={SIZE}
       decelerationRate="fast"
       onScroll={scrollHandler}
+      contentContainerStyle={{ paddingVertical: 10 }}
     >
       {newData.map((item, index) => {
         if (!item.image) {
@@ -63,19 +88,32 @@ const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
           };
         });
 
+        const productId = item.SNO || item.id;
+        const inWishlist = isInWishlist(productId);
+
         return (
           <View key={item.id} style={{ width: SIZE, alignItems: 'center' }}>
             <Animated.View style={[style, { overflow: 'hidden' }]}>
               <CardStyle1
-                id={item.id}
+                id={productId}
                 image={item.image!}
                 title={item.title || ''}
                 price={item.price || ''}
                 discount={item.discount || ''}
                 offer={item.offer || ''}
-                onPress={() => navigation.navigate('ProductDetails', { sno: item.id })}
+                onPress={() => navigation.navigate('ProductDetails', { sno: productId })}
                 Cardstyle4
-                onPress1={() => addItemToWishList(item)}
+                onPress1={() => toggleWishlist(item)}
+                wishlistActive={inWishlist}
+                likebtn
+                wishlistIcon={
+                  <Feather 
+                    name={inWishlist ? "heart" : "heart"} 
+                    size={20} 
+                    color={inWishlist ? COLORS.danger : COLORS.title} 
+                    fill={inWishlist ? COLORS.danger : 'none'}
+                  />
+                }
               />
             </Animated.View>
           </View>
