@@ -28,6 +28,41 @@ import { API_BASE_URL } from '../../Config/baseUrl';
 import { cartService } from '../../Services/CartService';
 import fallbackImage from '../../assets/images/item/pic6.png';
 
+// Define the CartItemWithDetails type
+interface CartItemWithDetails {
+  sno: string;
+  itemTagSno: string;
+  fullDetails: {
+    MaterialFinish: string;
+    Description: string;
+    TAGNO: string;
+    Occasion: string;
+    RATE: string;
+    GSTAmount: string;
+    TAGKEY: string;
+    Gender: string;
+    SIZEID: number;
+    Best_Design: boolean;
+    SNO: string;
+    CollectionType: string;
+    ImagePath: string;
+    NewArrival: boolean;
+    GrossAmount: string;
+    Featured_Products: boolean;
+    SIZENAME: string | null;
+    Rate: string;
+    StoneType: string | null;
+    SUBITEMNAME: string;
+    CATNAME: string;
+    NETWT: string;
+    GSTPer: string;
+    GrandTotal: string;
+    ColorAccents: string;
+    ITEMID: string;
+    ITEMNAME: string;
+  };
+}
+
 type Props = StackScreenProps<RootStackParamList, 'ProductDetails'>;
 
 const ProductDetails = ({ navigation, route }: Props) => {
@@ -209,6 +244,41 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const handleBuyNow = async () => {
     if (!product || !product.SNO) return;
 
+    // Format product data to match CartItemWithDetails type expected by Checkout
+    const cartItem: CartItemWithDetails = {
+      sno: product.SNO,
+      itemTagSno: product.SNO,
+      fullDetails: {
+        MaterialFinish: product.MaterialFinish || '',
+        Description: product.Description || '',
+        TAGNO: product.TAGNO || product.SNO,
+        Occasion: product.Occasion || '',
+        RATE: product.RATE || product.GrandTotal || '0',
+        GSTAmount: product.GSTAmount || '0',
+        TAGKEY: product.TAGKEY || product.SNO,
+        Gender: product.Gender || '',
+        SIZEID: product.SIZEID || 0,
+        Best_Design: product.Best_Design || false,
+        SNO: product.SNO,
+        CollectionType: product.CollectionType || '',
+        ImagePath: selectedImage || (imageArray.length > 0 ? imageArray[0] : ''),
+        NewArrival: product.NewArrival || false,
+        GrossAmount: product.GrossAmount || product.GrandTotal || '0',
+        Featured_Products: product.Featured_Products || false,
+        SIZENAME: product.SIZENAME || null,
+        Rate: product.RATE || product.GrandTotal || '0',
+        StoneType: product.StoneType || null,
+        SUBITEMNAME: product.SUBITEMNAME || 'Unnamed Product',
+        CATNAME: product.CATNAME || '',
+        NETWT: product.NETWT || product.GRSWT || '0',
+        GSTPer: product.GSTPer || '0',
+        GrandTotal: product.GrandTotal || product.RATE || '0',
+        ColorAccents: product.ColorAccents || '',
+        ITEMID: product.ITEMID || product.SNO,
+        ITEMNAME: product.ITEMNAME || product.SUBITEMNAME || 'Unnamed Product',
+      },
+    };
+
     // First add to cart if not already in cart
     if (!isInCart) {
       setCartLoading(true);
@@ -231,10 +301,10 @@ const ProductDetails = ({ navigation, route }: Props) => {
       }
     }
 
-    // Then navigate to checkout
+    // Navigate to Checkout with formatted product data
     navigation.navigate('Checkout', {
-      items: [product],
-      fromProductDetail: true
+      products: [cartItem],
+      fromProductDetail: true,
     });
   };
 
@@ -315,7 +385,8 @@ const ProductDetails = ({ navigation, route }: Props) => {
           leftIcon="back"
           rightIcon="cart"
           color
-          onPress={() => navigation.navigate('MyCart')}
+          onPressRight={() => navigation.navigate('MyCart')}
+          onPressLeft={() => navigation.goBack()}
         />
       </View>
 

@@ -16,39 +16,35 @@ export const fetchFeaturedProducts = async () => {
 
       try {
         if (product.ImagePath) {
-          // Remove backslashes
           const cleanedImagePath = product.ImagePath.replace(/\\/g, "");
-          // Parse JSON string into array
           const parsedImages = JSON.parse(cleanedImagePath);
-          // Convert to full URLs
           images = parsedImages.map((imgPath) =>
             imgPath.startsWith("http")
               ? imgPath
               : `${IMAGE_BASE_URL}${imgPath}`
           );
         }
-        console.log("✅ Product Images:", images);
-      } catch (e) {
-        console.warn("Failed to parse image paths", e);
+      } catch {
         images = [];
       }
 
-      // Prepare RN-safe mainImage
       const mainImage =
         images.length > 0
-          ? { uri: images[0] } // ✅ Remote image
-          : IMAGES.item14;     // ✅ Local fallback (require)
+          ? { uri: images[0] }
+          : IMAGES.item14;
 
       return {
         ...product,
-        images: images.map((url) => ({ uri: url })), // RN-ready array
+        images: images.map((url) => ({ uri: url })),
         mainImage,
       };
     });
 
+    // ✅ Only show products length
+    console.log(`✨ Featured Products Count: ${products.length}`);
+
     return products;
   } catch (error) {
-    console.error("Error fetching featured products:", error);
     throw error;
   }
 };

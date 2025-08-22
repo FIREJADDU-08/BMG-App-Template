@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
-  ScrollView,
   Text,
   ActivityIndicator,
   StyleSheet,
@@ -18,9 +17,12 @@ import { RootStackParamList } from "../../Navigations/RootStackParamList";
 import { fetchBestDesignProducts } from "../Services/BestDesignService";
 import { IMAGES } from "../constants/Images";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
-type BestDesignsPageProps = StackScreenProps<RootStackParamList, "BestDesignsPage">;
+type BestDesignsPageProps = StackScreenProps<
+  RootStackParamList,
+  "BestDesignsPage"
+>;
 
 const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
   const { colors } = useTheme();
@@ -37,6 +39,9 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
       const products = await fetchBestDesignProducts();
       const validProducts = products.filter((p) => p.mainImage && p.GrossAmount);
       setBestDesignProducts(validProducts);
+
+      // ✅ Only console here: show fetched count
+      console.log(`✅ Best Designs fetched: ${validProducts.length} items`);
     } catch (err) {
       console.error("❌ Error loading best design products:", err);
       setError("Failed to load best design products");
@@ -48,15 +53,6 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
   useEffect(() => {
     loadBestDesignProducts();
   }, [loadBestDesignProducts]);
-
-  const addItemToWishList = (data: any) => {
-    console.log("❤️ Added to wishlist:", data);
-  };
-
-  const addItemToCart = (data: any) => {
-    console.log("🛒 Added to cart:", data);
-    navigation.navigate("MyCart");
-  };
 
   const fallbackImage: ImageSourcePropType = IMAGES.item11;
 
@@ -88,52 +84,45 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
           </View>
         ) : bestDesignProducts.length > 0 ? (
           <View style={styles.gridContainer}>
-            {Array.from({ length: Math.ceil(bestDesignProducts.length / 4) }).map((_, rowIndex) => (
-              <View key={`row-${rowIndex}`} style={styles.row}>
-                {bestDesignProducts.slice(rowIndex * 4, rowIndex * 4 + 4).map((product, index) => {
-                  const price = Number(product?.GrandTotal) || 0;
-                  const discountPrice = price ? price * 1.1 : 0;
+            {Array.from({ length: Math.ceil(bestDesignProducts.length / 4) }).map(
+              (_, rowIndex) => (
+                <View key={`row-${rowIndex}`} style={styles.row}>
+                  {bestDesignProducts
+                    .slice(rowIndex * 4, rowIndex * 4 + 4)
+                    .map((product, index) => {
+                      const price = Number(product?.GrandTotal) || 0;
+                      const discountPrice = price ? price * 1.1 : 0;
 
-                  return (
-                    <View key={`${product.SNO}-${index}`} style={styles.cardWrapper}>
-                      <CardStyle1
-                        id={product.SNO}
-                        image={
-                          product.mainImage
-                            ? { uri: product.mainImage }
-                            : fallbackImage
-                        }
-                        title={product.SUBITEMNAME || "Jewelry Item"}
-                        price={`₹${price.toFixed(2)}`}
-                        discount={`₹${discountPrice.toFixed(2)}`}
-                        onPress={() =>
-                          navigation.navigate("ProductDetails", {
-                            sno: product.SNO,
-                          })
-                        }
-                        onPress1={() =>
-                          addItemToWishList({
-                            id: product.SNO,
-                            image: product.mainImage || fallbackImage,
-                            title: product.SUBITEMNAME,
-                            price: product.GrossAmount,
-                          })
-                        }
-                        onPress2={() =>
-                          addItemToCart({
-                            id: product.SNO,
-                            image: product.mainImage || fallbackImage,
-                            title: product.SUBITEMNAME,
-                            price: product.GrossAmount,
-                          })
-                        }
-                        closebtn
-                      />
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
+                      return (
+                        <View
+                          key={`${product.SNO}-${index}`}
+                          style={styles.cardWrapper}
+                        >
+                          <CardStyle1
+                            id={product.SNO}
+                            image={
+                              product.mainImage
+                                ? { uri: product.mainImage }
+                                : fallbackImage
+                            }
+                            title={product.SUBITEMNAME || "Jewelry Item"}
+                            price={`₹${price.toFixed(2)}`}
+                            discount={`₹${discountPrice.toFixed(2)}`}
+                            onPress={() =>
+                              navigation.navigate("ProductDetails", {
+                                sno: product.SNO,
+                              })
+                            }
+                            onPress1={() => {}} // Removed console log
+                            onPress2={() => {}} // Removed console log
+                            closebtn
+                          />
+                        </View>
+                      );
+                    })}
+                </View>
+              )
+            )}
           </View>
         ) : (
           <View style={styles.emptyContainer}>
@@ -166,16 +155,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   gridContainer: {
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     marginBottom: 15,
   },
   cardWrapper: {
-    width: '48%',
+    width: "48%",
     marginBottom: 15,
   },
 });

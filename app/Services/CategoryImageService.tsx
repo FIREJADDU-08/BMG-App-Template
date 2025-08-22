@@ -6,15 +6,12 @@ export const getMainCategoryImages = async () => {
     const response = await fetch(`${API_BASE_URL}/mainCategory_images/list`);
 
     if (!response.ok) {
-      console.warn(`API returned status ${response.status}`);
-      return []; // Don't throw, just return empty array
+      return []; // return empty array on bad status
     }
 
-    
     const data = await response.json();
 
     if (!Array.isArray(data)) {
-      console.warn('Unexpected API format:', data);
       return [];
     }
 
@@ -26,8 +23,7 @@ export const getMainCategoryImages = async () => {
         : "https://via.placeholder.com/100",
       createdAt: item.created_at
     }));
-  } catch (error) {
-    console.error('Error fetching main category images:', error);
-    return []; // Return empty list so UI doesn't crash
+  } catch {
+    return []; // fail silently and return empty array
   }
 };

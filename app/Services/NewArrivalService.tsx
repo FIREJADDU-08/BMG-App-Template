@@ -1,6 +1,6 @@
 // Update your service file (e.g., productService.ts)
 import { API_BASE_URL } from "../Config/baseUrl";
-import {IMAGES} from '../constants/Images'
+import { IMAGES } from '../constants/Images';
 
 const IMAGE_BASE_URL = "https://app.bmgjewellers.com"; // root domain for images
 
@@ -17,11 +17,10 @@ export const getNewArrivalProducts = async () => {
     );
 
     if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+      return []; // return empty array instead of throwing
     }
 
     const json = await response.json();
-    console.log("New Arrival Products:", json);
 
     // Map data and construct full image URL and format price
     return (json.data || []).map(item => ({
@@ -33,11 +32,10 @@ export const getNewArrivalProducts = async () => {
       title: item.ITEMNAME || "Jewelry Item",
       price: `₹${parseFloat(item.GrandTotal || "0").toFixed(2)}`, // Format as INR
       discount: `₹${parseFloat(item.GrandTotal || "0").toFixed(2)}`, // Using GrandTotal as discount price
-      offer: item.GSTPer || "3% GST" // Showing GST percentage as offer
+      offer: item.GSTPer || "3% GST", // Showing GST percentage as offer
     }));
 
-  } catch (error) {
-    console.error("Error fetching new arrival products:", error);
-    return [];
+  } catch {
+    return []; // fail silently and return empty list
   }
 };

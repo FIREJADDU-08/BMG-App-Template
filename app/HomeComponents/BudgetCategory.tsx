@@ -24,7 +24,7 @@ const BudgetCategoriesScreen = () => {
             try {
                 const data = await fetchBudgetCategories('yourAuthToken');
                 setCategories(data);
-                console.log('Fetched categories:', data);
+                // console.log('Fetched categories:', data);
                 setError(null);
             } catch (err) {
                 console.error('Failed to load categories:', err);
@@ -76,7 +76,13 @@ const BudgetCategoriesScreen = () => {
 
     const rows = chunkArray(categories, 2);
 
-    return (
+return (
+    <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+        {/* 🟢 Header Section */}
+        <View style={styles.headerContainer}>
+            <Text style={styles.headerTitle}>Shop by Price</Text>
+        </View>
+
         <ScrollView
             style={styles.container}
             contentContainerStyle={styles.scrollContainer}
@@ -93,19 +99,12 @@ const BudgetCategoriesScreen = () => {
                                     initialFilters: {
                                         minGrandTotal: item.min,
                                         maxGrandTotal: item.max,
-                                        // categoryId: item.id,
-                                        // itemName: item.title,
-            
                                     },
                                 };
-
-                                console.log("🔎 Navigation Params:", params);
-
                                 navigation.navigate('Products', params);
                             }}
                             activeOpacity={0.7}
                         >
-
                             <View style={styles.imageContainer}>
                                 <Image
                                     source={{ uri: item.image }}
@@ -119,22 +118,36 @@ const BudgetCategoriesScreen = () => {
                             </View>
                         </TouchableOpacity>
                     ))}
-                    {/* Add empty view if row has only 1 item */}
                     {row.length === 1 && <View style={{ width: itemSize }} />}
                 </View>
             ))}
         </ScrollView>
-    );
+    </View>
+);
+
 };
 
 const styles = StyleSheet.create({
-    container: {
+     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
     },
     scrollContainer: {
         padding: 10,
         paddingBottom: 20,
+    },
+    headerContainer: {
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
     },
     centerContainer: {
         flex: 1,

@@ -18,7 +18,7 @@ import { useTheme } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../Navigations/RootStackParamList';
 import { getRecentlyViewedProducts } from '../Services/RecentService';
-import { Product } from '../types/Product'; // Assuming you have a Product type
+import { Product } from '../types/Product';
 
 type Props = {
   navigation: StackNavigationProp<RootStackParamList, 'Home'>;
@@ -27,7 +27,8 @@ type Props = {
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH > SIZES.container ? SIZES.container / 3 : SCREEN_WIDTH / 2.9;
+const CARD_WIDTH =
+  SCREEN_WIDTH > SIZES.container ? SIZES.container / 3 : SCREEN_WIDTH / 2.9;
 
 const RecentlyShortlistedSection: React.FC<Props> = ({
   navigation,
@@ -42,81 +43,103 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Enhanced image processing function
-  const processImagePath = useCallback((imagePath: string | string[] | null | undefined): string => {
-    const fallbackImage = IMAGES.item11;
-    
-    if (!imagePath) return fallbackImage;
+  // Image path processing
+  const processImagePath = useCallback(
+    (imagePath: string | string[] | null | undefined): string => {
+      const fallbackImage = IMAGES.item13;
 
-    try {
-      let imageUrl = '';
-      
-      if (Array.isArray(imagePath)) {
-        // If it's already an array, take the first valid image
-        const validImages = imagePath.filter(img => img && typeof img === 'string' && img.trim() !== '');
-        imageUrl = validImages.length > 0 ? validImages[0] : '';
-      } else if (typeof imagePath === 'string') {
-        if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
-          // JSON string format - parse it
-          const parsedImages = JSON.parse(imagePath);
-          if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-            const validImages = parsedImages.filter(img => img && typeof img === 'string' && img.trim() !== '');
-            imageUrl = validImages.length > 0 ? validImages[0] : '';
+      if (!imagePath) return fallbackImage;
+
+      try {
+        let imageUrl = '';
+
+        if (Array.isArray(imagePath)) {
+          const validImages = imagePath.filter(
+            img => img && typeof img === 'string' && img.trim() !== '',
+          );
+          imageUrl = validImages.length > 0 ? validImages[0] : '';
+        } else if (typeof imagePath === 'string') {
+          if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
+            try {
+              const parsedImages = JSON.parse(imagePath);
+              if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+                const validImages = parsedImages.filter(
+                  img => img && typeof img === 'string' && img.trim() !== '',
+                );
+                imageUrl = validImages.length > 0 ? validImages[0] : '';
+              }
+            } catch {
+              const match = imagePath.match(/"([^"]+)"/);
+              imageUrl = match ? match[1] : imagePath;
+            }
+          } else {
+            imageUrl = imagePath.trim();
           }
-        } else {
-          // Single image path
-          imageUrl = imagePath.trim();
         }
+
+        if (!imageUrl) return fallbackImage;
+
+        imageUrl = imageUrl.replace(/["'[\]]/g, '').trim();
+
+        if (imageUrl.startsWith('http')) {
+          return imageUrl;
+        } else if (imageUrl.startsWith('/')) {
+          return `https://app.bmgjewellers.com${imageUrl}`;
+        } else {
+          return `https://app.bmgjewellers.com/uploads/${imageUrl}`;
+        }
+      } catch {
+        return fallbackImage;
       }
+    },
+    [],
+  );
 
-      if (!imageUrl) return fallbackImage;
+  // Process products
+  const processProducts = useCallback(
+    (rawProducts: any[]): Product[] => {
+      if (!Array.isArray(rawProducts)) return [];
 
-      // Construct full URL if needed
-      if (imageUrl.startsWith('http')) {
-        return imageUrl;
-      } else if (imageUrl.startsWith('/uploads')) {
-        return `https://app.bmgjewellers.com${imageUrl}`;
-      } else {
-        return `https://app.bmgjewellers.com/uploads/${imageUrl}`;
-      }
-    } catch (err) {
-      console.warn('⚠️ Image processing failed for:', imagePath, err);
-      return fallbackImage;
-    }
-  }, []);
+      return rawProducts.map((product, index) => {
+        const imageSource =
+          product.ImagePath || product.image || product.image_url || product.img;
+        const processedImage = processImagePath(imageSource);
 
-  // Enhanced product processing function
-  const processProducts = useCallback((rawProducts: any[]): Product[] => {
-    if (!Array.isArray(rawProducts)) return [];
+        return {
+          id:
+            product.SNO ||
+            product.TAGKEY ||
+            product.id ||
+            `product-${index}`,
+          title:
+            product.SUBITEMNAME ||
+            product.ITEMNAME ||
+            product.title ||
+            'Product',
+          price: product.GrandTotal || product.RATE || product.price || 0,
+          discount: product.discount || 0,
+          image: processedImage,
+          rawData: product,
+        };
+      });
+    },
+    [processImagePath],
+  );
 
-    return rawProducts.map((product, index) => {
-      const processedImage = processImagePath(product.ImagePath || product.image);
-      
-      return {
-        id: product.SNO || product.TAGKEY || product.id || `product-${index}`,
-        title: product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product',
-        price: product.GrandTotal || product.RATE || product.price || 0,
-        discount: product.discount || 0,
-        image: processedImage,
-        rawData: product, // Keep original data for reference
-      };
-    });
-  }, [processImagePath]);
-
+  // Fetch products
   const fetchRecentlyViewed = useCallback(async () => {
-    try { 
+    try {
       setLoading(true);
       setError(null);
       const data = await getRecentlyViewedProducts();
-      
+
       if (data && Array.isArray(data)) {
         const processedProducts = processProducts(data);
         setProducts(processedProducts);
       } else {
         setProducts([]);
       }
-    } catch (err) {
-      console.error('❌ Failed to load recently viewed products:', err);
+    } catch {
       setError('Failed to load recently viewed products. Please try again.');
       setProducts([]);
     } finally {
@@ -132,47 +155,42 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     (productId: string) => {
       navigation.navigate('ProductDetails', { sno: productId });
     },
-    [navigation]
+    [navigation],
   );
 
   const handleSeeAllPress = useCallback(() => {
     navigation.navigate('RecentlyViewed');
   }, [navigation]);
 
-  // Handle individual image errors
-  const handleImageError = useCallback((productId: string, originalImage: string) => {
-    console.warn(`⚠️ Image failed for product ${productId}: ${originalImage}`);
-    
-    setFailedImages(prev => new Set([...prev, originalImage]));
-    
-    // Update the product with fallback image
-    setProducts(prevProducts => 
-      prevProducts.map(product => 
-        product.id === productId 
-          ? { ...product, image: IMAGES.item11 }
-          : product
-      )
+  const handleImageError = useCallback((productId: string) => {
+    setProducts(prevProducts =>
+      prevProducts.map(product =>
+        product.id === productId
+          ? { ...product, image: IMAGES.item13}
+          : product,
+      ),
     );
   }, []);
 
-  // Get working image for a product
-  const getWorkingImage = useCallback((product: Product): string => {
-    if (failedImages.has(product.image)) {
-      return IMAGES.item11;
-    }
-    return product.image || IMAGES.item11;
-  }, [failedImages]);
+  const getWorkingImage = useCallback(
+    (product: Product): string => {
+      if (failedImages.has(product.image)) {
+        return IMAGES.item13;
+      }
+      return product.image || IMAGES.item13;
+    },
+    [failedImages],
+  );
 
   const renderProductItem = useCallback(
     (product: Product, index: number) => {
       const workingImage = getWorkingImage(product);
-      
+
       return (
         <View
           style={styles.productContainer}
           key={`recent-${product.id}-${index}`}
-          testID={`product-item-${index}`}
-        >
+          testID={`product-item-${index}`}>
           <CardStyle1
             id={product.id}
             image={workingImage}
@@ -180,26 +198,29 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
             price={product.price}
             discount={product.discount}
             onPress={() => handleProductPress(product.id)}
-            onImageError={() => handleImageError(product.id, product.image)}
+            onImageError={() => handleImageError(product.id)}
             card3
             removelikebtn
           />
         </View>
       );
     },
-    [handleProductPress, handleImageError, getWorkingImage]
+    [handleProductPress, handleImageError, getWorkingImage],
   );
 
-  // Refresh handler for pull-to-refresh functionality
   const handleRefresh = useCallback(() => {
-    setFailedImages(new Set()); // Clear failed images on refresh
+    setFailedImages(new Set());
     fetchRecentlyViewed();
   }, [fetchRecentlyViewed]);
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color={COLORS.primary} testID="loading-indicator" />
+        <ActivityIndicator
+          size="small"
+          color={COLORS.primary}
+          testID="loading-indicator"
+        />
       </View>
     );
   }
@@ -209,7 +230,9 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
       <View style={styles.errorContainer}>
         <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
         <TouchableOpacity onPress={handleRefresh} style={styles.retryButton}>
-          <Text style={[styles.retryText, { color: COLORS.primary }]}>Retry</Text>
+          <Text style={[styles.retryText, { color: COLORS.primary }]}>
+            Retry
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -237,14 +260,17 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
         styles.container,
         { backgroundColor: colors.background },
       ]}
-      testID="recently-shortlisted-section"
-    >
+      testID="recently-shortlisted-section">
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.title }]}>{title}</Text>
         {showSeeAll && products.length > 0 && (
-          <TouchableOpacity onPress={handleSeeAllPress} testID="see-all-button">
-            <Text style={[styles.seeAllText, { color: colors.title }]}>See All</Text>
+          <TouchableOpacity
+            onPress={handleSeeAllPress}
+            testID="see-all-button">
+            <Text style={[styles.seeAllText, { color: colors.title }]}>
+              See All
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -256,24 +282,14 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
-            products.length === 0 && styles.scrollContentEmpty
+            products.length === 0 && styles.scrollContentEmpty,
           ]}
-          testID="products-scrollview"
-        >
+          testID="products-scrollview">
           <View style={styles.productsRow}>
             {products.map(renderProductItem)}
           </View>
         </ScrollView>
       </View>
-
-      {/* Debug info in development mode */}
-      {/* {__DEV__ && (
-        <View style={styles.debugContainer}>
-          <Text style={[styles.debugText, { color: colors.text }]}>
-            Products: {products.length} | Failed Images: {failedImages.size}
-          </Text>
-        </View>
-      )} */}
     </View>
   );
 };
@@ -357,15 +373,6 @@ const styles = StyleSheet.create({
   },
   productContainer: {
     width: CARD_WIDTH,
-  },
-  debugContainer: {
-    padding: 5,
-    marginTop: 5,
-    opacity: 0.5,
-  },
-  debugText: {
-    fontSize: 10,
-    textAlign: 'center',
   },
 });
 

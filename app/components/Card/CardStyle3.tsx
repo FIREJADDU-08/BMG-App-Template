@@ -23,7 +23,8 @@ type Props = {
   removebtn?: boolean;
   discount?: string;
   grid?: boolean;
-  review?: string;
+  review?: string; // Changed from review to status
+  status?: string;
   likeBtn?: boolean;
   onPress?: () => void;
   CardStyle5?: boolean;
@@ -46,6 +47,7 @@ const CardStyle3 = ({
   removebtn,
   grid,
   review,
+  status,
   likeBtn,
   offer,
   CardStyle5,
@@ -75,6 +77,8 @@ const CardStyle3 = ({
       }
     } else if (Array.isArray(image) && image.length > 0) {
       imageUrl = image[0];
+    } else if (typeof image === 'object' && image?.uri) {
+      imageUrl = image.uri;
     }
 
     if (imageUrl && !imageUrl.startsWith('http')) {
@@ -82,6 +86,27 @@ const CardStyle3 = ({
     }
 
     return imageUrl || 'https://yourdomain.com/default-image.png';
+  };
+
+  // Function to determine status color based on status value
+  const getStatusColor = (status: string | undefined): string => {
+    if (!status) return theme.dark ? 'rgba(255,255,255,.5)' : 'rgba(0, 0, 0, 0.50)';
+    
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+      case 'PROCESSING':
+        return COLORS.warning; // Yellow/Orange for pending or processing
+      case 'SHIPPED':
+      case 'IN_DELIVERY': // Matches "In Delivery" text in original code
+        return COLORS.success; // Green for shipped or in delivery
+      case 'DELIVERED':
+      case 'COMPLETED':
+        return COLORS.primary; // Primary color for delivered or completed
+      case 'CANCELLED':
+        return COLORS.danger; // Red for cancelled
+      default:
+        return theme.dark ? 'rgba(255,255,255,.5)' : 'rgba(0, 0, 0, 0.50)'; // Default color
+    }
   };
 
   return (
@@ -109,11 +134,10 @@ const CardStyle3 = ({
           backgroundColor: colors.card,
           borderRadius: 20,
         }}
-        onPress={onPress} // ✅ Use the passed in onPress function
+        onPress={onPress}
       >
         <Image
           style={{
-            height: null,
             width: 150,
             aspectRatio: 1 / 1,
             resizeMode: 'contain',
@@ -162,25 +186,24 @@ const CardStyle3 = ({
                 style={{
                   ...FONTS.fontRegular,
                   fontSize: 14,
-                  color: theme.dark ? 'rgba(255,255,255,.5)' : 'rgba(0, 0, 0, 0.50)',
+                  color: theme.dark ? 'rgba(255,255,255,.7)' : 'rgba(0, 0, 0, 0.70)',
                 }}
               >
-                {review || '(2K Review)'}
+                {review}
               </Text>
             )}
           </View>
 
           {grid && (
             <Text
-              style={{
-                ...FONTS.fontMedium,
-                fontSize: 16,
-                color: COLORS.success,
-                marginTop: 5,
-              }}
-            >
-              In Delivery
-            </Text>
+                style={{
+                  ...FONTS.fontRegular,
+                  fontSize: 14,
+                  color: getStatusColor(status), // Use dynamic status color
+                }}
+              >
+                {status || '(2K Review)'}
+              </Text>
           )}
 
           <View

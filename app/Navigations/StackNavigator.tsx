@@ -63,6 +63,9 @@ import Tables from "../Screens/Shortcode/Tables";
 import Toggles from "../Screens/Shortcode/Toggles";
 import PaymentGateway from "../components/Payments/paymentGateway";
 import PaymentPage from "../components/Payments/PaymentPage";
+import OrderDetails from "../Screens/profile/OrderDetails";
+import SuccessModal from "../components/Modal/SuccessModal";
+import FailureModal from "../components/Modal/FailureModal";
 
 //HomeComponents
 import JewelryCollection from "../HomeComponents/JewelryCollection";
@@ -198,6 +201,9 @@ const StackNavigator = () => {
           <Stack.Screen name="FeaturedNow" component={FeaturedNowSection} />
           <Stack.Screen name="PaymentGateway" component={PaymentGateway} />
           <Stack.Screen name="PaymentPage" component={PaymentPage} />
+          <Stack.Screen name="OrderDetails" component={OrderDetails} />
+          <Stack.Screen name="FailureModal" component={FailureModal} />
+          <Stack.Screen name="SuccessModal" component={SuccessModal} />
         </Stack.Navigator>
         </AddressProvider>
       </UserProvider>

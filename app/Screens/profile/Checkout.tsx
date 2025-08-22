@@ -22,39 +22,62 @@ import { useAddress } from '../../Context/AddressContext';
 
 const { height } = Dimensions.get('window');
 
-// Define CartItemWithDetails type locally since it's imported from Shopping
+// Define CartItemWithDetails type based on your data structure
 type CartItemWithDetails = {
-    sno: number;
-    itemTagSno: string;
     fullDetails: {
-        MaterialFinish: string;
-        Description: string;
-        TAGNO: string;
-        Occasion: string;
-        RATE: string;
-        GSTAmount: string;
-        TAGKEY: string;
-        Gender: string;
-        SIZEID: number;
         Best_Design: boolean;
-        SNO: string;
-        CollectionType: string;
-        ImagePath: string;
-        NewArrival: boolean;
-        GrossAmount: string;
-        Featured_Products: boolean;
-        SIZENAME: string | null;
-        Rate: string;
-        StoneType: string | null;
-        SUBITEMNAME: string;
         CATNAME: string;
-        NETWT: string;
-        GSTPer: string;
-        GrandTotal: string;
+        CollectionType: string;
         ColorAccents: string;
+        Description: string;
+        Featured_Products: boolean;
+        GRSWT: number;
+        GSTAmount: number;
+        GSTPer: string;
+        Gender: string;
+        GrandTotal: number;
+        GrossAmount: number;
         ITEMID: string;
         ITEMNAME: string;
+        ImagePath: string;
+        LESSWT: number;
+        MAXWASTPER: number;
+        MC: number;
+        MaterialFinish: string;
+        MiscAmount: number;
+        NETWT: number;
+        NewArrival: boolean;
+        Occasion: string;
+        PURITY: number;
+        RATE: string;
+        Rate: number;
+        SIZEID: string;
+        SIZENAME: string | null;
+        SNO: string;
+        SUBITEMID: number;
+        SUBITEMNAME: string;
+        StoneAmount: number;
+        TAGKEY: string;
+        TAGNO: string;
+        Top_Trending: boolean;
+        WASTAGE: number;
+        cartSno: number;
+        itemTagSno: string;
+        quantity: number | null;
     };
+    grsWt: number | null;
+    itemId: string | null;
+    itemTagSno: string;
+    netWt: number | null;
+    phoneNumber: string;
+    purity: number | null;
+    quantity: number | null;
+    sno: number;
+    stnAmount: number | null;
+    stnWt: number | null;
+    subItemId: number | null;
+    tagNo: string | null;
+    userId: number;
 };
 
 type CheckoutScreenProps = StackScreenProps<RootStackParamList, 'Checkout'>;
@@ -63,11 +86,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
     const theme = useTheme();
     const { colors }: { colors: any } = theme;
     
-    const discount = 50; // Fixed discount of ₹50
-    const shippingFee = 50; // Fixed shipping fee of ₹50
-    const taxRate = 0.18; // 18% GST
-
-    // Get selected address ID from navigation params
+    // Get selected address ID and products from navigation params
     const { selectedAddressId, products: initialProducts } = route.params || {};
     const { addresses, getAddresses } = useAddress();
 
@@ -84,26 +103,41 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
         return addresses.find(addr => addr.isDefault) || null;
     }, [addresses, selectedAddressId]);
 
-    // Get products from navigation params (from Shopping cart)
+    // Get products from navigation params
     const products: CartItemWithDetails[] = initialProducts || [];
     
-    // Calculate order summary with enhanced calculations
+    // Calculate order summary based on the provided data
     const orderSummary = React.useMemo(() => {
+        // Calculate subtotal from GrossAmount of all products
         const subtotal = products.reduce((acc, item) => {
-            return acc + parseFloat(item?.fullDetails?.GrandTotal || '0');
+            return acc + (item?.fullDetails?.GrossAmount || 0);
         }, 0);
 
-        const discountAmount = discount;
-        const subtotalAfterDiscount = subtotal - discountAmount;
-        const taxAmount = subtotalAfterDiscount * taxRate;
-        const total = subtotalAfterDiscount + taxAmount + shippingFee;
+        // Calculate total GST from GSTAmount of all products
+        const gstTotal = products.reduce((acc, item) => {
+            return acc + (item?.fullDetails?.GSTAmount || 0);
+        }, 0);
+
+        // Calculate grand total from GrandTotal of all products
+        const grandTotal = products.reduce((acc, item) => {
+            return acc + (item?.fullDetails?.GrandTotal || 0);
+        }, 0);
+
+        // If there's only one product, use its values directly
+        if (products.length === 1) {
+            const product = products[0].fullDetails;
+            return {
+                subtotal: product.GrossAmount,
+                gst: product.GSTAmount,
+                grandTotal: product.GrandTotal,
+                itemCount: 1
+            };
+        }
 
         return { 
-            subtotal: subtotal.toFixed(2),
-            discount: discountAmount.toFixed(2),
-            tax: taxAmount.toFixed(2),
-            shipping: shippingFee.toFixed(2),
-            total: total.toFixed(2),
+            subtotal,
+            gst: gstTotal,
+            grandTotal,
             itemCount: products.length
         };
     }, [products]);
@@ -143,7 +177,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
             navigation.navigate('SaveAddress', {
                 products,
                 selectedAddressId: selectedAddress?.id,
-                fromCheckout: true // Indicate coming from Checkout
+                fromCheckout: true
             });
             return;
         }
@@ -174,7 +208,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                 {/* Scrollable content area */}
                 <ScrollView 
                     contentContainerStyle={{ 
-                        paddingBottom: 200, // Extra space for fixed order summary
+                        paddingBottom: 200,
                         paddingTop: 10
                     }}
                     showsVerticalScrollIndicator={false}
@@ -208,28 +242,14 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                                     <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text }}>Subtotal</Text>
                                     <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>
-                                        ₹{orderSummary.subtotal}
+                                        ₹{orderSummary.subtotal.toFixed(2)}
                                     </Text>
                                 </View>
 
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text }}>Discount</Text>
-                                    <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: COLORS.success }}>
-                                        -₹{orderSummary.discount}
-                                    </Text>
-                                </View>
-
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text }}>GST (18%)</Text>
+                                    <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text }}>GST ({products[0]?.fullDetails?.GSTPer || '3%'})</Text>
                                     <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>
-                                        ₹{orderSummary.tax}
-                                    </Text>
-                                </View>
-
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                                    <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text }}>Shipping</Text>
-                                    <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>
-                                        ₹{orderSummary.shipping}
+                                        ₹{orderSummary.gst.toFixed(2)}
                                     </Text>
                                 </View>
 
@@ -242,7 +262,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                     <Text style={{ ...FONTS.fontBold, fontSize: 16, color: colors.title }}>Total Amount</Text>
                                     <Text style={{ ...FONTS.fontBold, fontSize: 18, color: COLORS.primary }}>
-                                        ₹{orderSummary.total}
+                                        ₹{orderSummary.grandTotal.toFixed(2)}
                                     </Text>
                                 </View>
                             </View>
@@ -263,7 +283,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                                 onPress={() => navigation.navigate('SaveAddress', {
                                     products,
                                     selectedAddressId: selectedAddress?.id,
-                                    fromCheckout: true // Indicate coming from Checkout
+                                    fromCheckout: true
                                 })}
                                 style={{
                                     flexDirection: 'row',
@@ -424,12 +444,15 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                                                         {item.fullDetails?.CATNAME}
                                                     </Text>
                                                     <Text style={{ ...FONTS.fontRegular, fontSize: 11, color: colors.text, opacity: 0.7 }}>
-                                                        SKU: {item.fullDetails?.TAGKEY || 'N/A'}
+                                                        SKU: {item.fullDetails?.TAGNO || 'N/A'}
+                                                    </Text>
+                                                    <Text style={{ ...FONTS.fontRegular, fontSize: 11, color: colors.text, opacity: 0.7 }}>
+                                                        Net Wt: {item.fullDetails?.NETWT}g
                                                     </Text>
                                                 </View>
                                                 <View style={{ alignItems: 'flex-end' }}>
                                                     <Text style={{ ...FONTS.fontBold, fontSize: 16, color: COLORS.primary }}>
-                                                        ₹{parseFloat(item.fullDetails?.GrandTotal || '0').toFixed(2)}
+                                                        ₹{item.fullDetails?.GrandTotal.toFixed(2)}
                                                     </Text>
                                                     {item.fullDetails?.NewArrival && (
                                                         <View style={{
@@ -477,7 +500,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                         justifyContent: 'center'
                     }}>
                         <Button
-                            title={!selectedAddress ? "Select Address First" : `Proceed to Payment • ₹${orderSummary.total}`}
+                            title={!selectedAddress ? "Select Address First" : `Proceed to Payment • ₹${orderSummary.grandTotal.toFixed(2)}`}
                             onPress={handleProceedToPayment}
                             color={!selectedAddress ? colors.border : COLORS.primary}
                             btnRounded

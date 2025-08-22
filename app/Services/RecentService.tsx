@@ -6,15 +6,11 @@ import { IMAGES } from '../constants/Images';
 export const getRecentlyViewedProducts = async () => {
   const API_IMAGE_URL = 'https://app.bmgjewellers.com/';
 
-
   try {
-    // console.log("📌 getRecentlyViewedProducts started");
-
     const token = await AsyncStorage.getItem('user_token');
-    // console.log("📌 Retrieved token:", token);
 
     if (!token) {
-      throw { type: 'NO_TOKEN', message: 'User token not found. Please log in.' };
+      return []; // No token, return empty list
     }
 
     // Step 1: Get recently viewed IDs
@@ -27,14 +23,13 @@ export const getRecentlyViewedProducts = async () => {
     });
 
     if (!recentlyViewedResponse.ok) {
-      throw { type: 'FETCH_FAILED', message: `HTTP ${recentlyViewedResponse.status}` };
+      return []; // Fetch failed, return empty list
     }
 
     const recentlyViewedData = await recentlyViewedResponse.json();
-    // console.log("✅ Raw Recently Viewed IDs:", recentlyViewedData);
 
     if (!recentlyViewedData.data || !Array.isArray(recentlyViewedData.data)) {
-      throw { type: 'INVALID_DATA', message: 'Invalid recently viewed data format' };
+      return []; // Invalid format, return empty list
     }
 
     // Step 2: Fetch product details
@@ -42,14 +37,11 @@ export const getRecentlyViewedProducts = async () => {
       const productDetailsUrl = `${API_BASE_URL}/product/getSnofilter?sno=${sno}`;
       const productDetailsResponse = await fetch(productDetailsUrl);
 
-      const productJson = await productDetailsResponse.json();
-
       if (!productDetailsResponse.ok) {
-        console.error(`Failed to fetch details for product ${sno}`);
         return null;
       }
 
-      return productJson;
+      return await productDetailsResponse.json();
     });
 
     const productDetailsResults = await Promise.all(productDetailsPromises);
@@ -57,49 +49,65 @@ export const getRecentlyViewedProducts = async () => {
       .filter(Boolean)
       .flatMap(result => result || []);
 
-    // console.log("✅ Raw Product Details:", productDetailsData);
+    // Step 3: Map final products with robust image handling
+    const products = productDetailsData.map((item: any) => {
+      let images: string[] = [];
 
-    // Step 3: Map final products with safe image parsing
-// Step 3: Map final products with safe image parsing
-const products = productDetailsData.map((item: any) => {
-  let images: string[] = [];
-
-  try {
-    if (item.ImagePath) { // Check if ImagePath exists and is not null/undefined
-      if (typeof item.ImagePath === 'string') {
-        images = JSON.parse(item.ImagePath);
-      } else if (Array.isArray(item.ImagePath)) {
-        images = item.ImagePath;
+      try {
+        if (item.ImagePath) {
+          if (typeof item.ImagePath === 'string') {
+            if (item.ImagePath.startsWith('[') && item.ImagePath.endsWith(']')) {
+              try {
+                images = JSON.parse(item.ImagePath);
+              } catch {
+                const pathMatch = item.ImagePath.match(/"([^"]+)"/g);
+                if (pathMatch) {
+                  images = pathMatch.map((path: string) => path.replace(/"/g, ''));
+                } else {
+                  images = [item.ImagePath];
+                }
+              }
+            } else {
+              images = [item.ImagePath];
+            }
+          } else if (Array.isArray(item.ImagePath)) {
+            images = item.ImagePath;
+          }
+        }
+      } catch {
+        images = [];
       }
-    }
-  } catch (e) {
-    console.error("Error parsing ImagePath:", e);
-    images = [];
-  }
 
-  const firstImage =
-  images.length > 0 && images[0]
-    ? `${API_IMAGE_URL}${images[0]}`
-    : IMAGES.item11; // ✅ use directly
+      // Clean and format the first image URL
+      let firstImage = IMAGES.item11;
+      if (images.length > 0 && images[0]) {
+        let imagePath = images[0];
+        imagePath = imagePath.replace(/["'[\]]/g, '').trim();
 
-  // console.log("✅ Product Image:", firstImage);
-  return {
-    id: item.SNO,
-    title: item.SUBITEMNAME || item.ITEMNAME || 'Unknown Product',
-   price: `${(Number(item.GrandTotal) > 0 ? item.GrandTotal : item.RATE) || '0.00'}`,
-    image: firstImage,
-    description: item.Description, 
-    category: item.CATNAME,  
-    weight: item.GRSWT,
-    purity: item.PURITY,
-    originalData: item,
-  };
-});
-    // console.log("✅ Final Recently Viewed Products:", products);
+        if (imagePath.startsWith('http')) {
+          firstImage = imagePath;
+        } else if (imagePath.startsWith('/')) {
+          firstImage = `${API_IMAGE_URL}${imagePath.startsWith('/') ? imagePath.substring(1) : imagePath}`;
+        } else {
+          firstImage = `${API_IMAGE_URL}uploads/${imagePath}`;
+        }
+      }
+
+      return {
+        id: item.SNO,
+        title: item.SUBITEMNAME || item.ITEMNAME || 'Unknown Product',
+        price: `${(Number(item.GrandTotal) > 0 ? item.GrandTotal : item.RATE) || '0.00'}`,
+        image: firstImage,
+        description: item.Description,
+        category: item.CATNAME,
+        weight: item.GRSWT,
+        purity: item.PURITY,
+        originalData: item,
+      };
+    });
+
     return products;
-
-  } catch (error: any) {
-    console.error("❌ getRecentlyViewedProducts error:", error);
-    throw error;
+  } catch {
+    return []; // On any unexpected error, return empty list
   }
 };

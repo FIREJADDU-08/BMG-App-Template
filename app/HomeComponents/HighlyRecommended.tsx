@@ -45,6 +45,7 @@ const HighlyRecommendedSection = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  console.log(`✅ HighlyRecommendedSection loaded with ${products.length} products`);
 
   // Fetch data on mount
   useEffect(() => {
@@ -57,8 +58,7 @@ const HighlyRecommendedSection = ({
           dispatch(fetchWishList()),
           fetchNewArrivals()
         ]);
-      } catch (err) {
-        console.error('Initial data loading error:', err);
+      } catch {
         setError('Failed to load products. Please try again.');
       } finally {
         setLoading(false);
@@ -71,9 +71,8 @@ const HighlyRecommendedSection = ({
     try {
       const data = await getNewArrivalProducts();
       setProducts(data || []);
-    } catch (err) {
-      console.error('Failed to load products:', err);
-      throw err;
+    } catch {
+      throw new Error("Failed to load products");
     }
   }, []);
 
@@ -86,8 +85,7 @@ const HighlyRecommendedSection = ({
         dispatch(fetchWishList()),
         dispatch(fetchCartItems())
       ]);
-    } catch (err) {
-      console.error('Refresh error:', err);
+    } catch {
       setError('Failed to refresh data');
     } finally {
       setRefreshing(false);
@@ -104,8 +102,8 @@ const HighlyRecommendedSection = ({
         await dispatch(addProductToWishList(product));
       }
       dispatch(fetchWishList());
-    } catch (err) {
-      console.error('Wishlist error:', err);
+    } catch {
+      // silently fail
     }
   }, [dispatch, wishList]);
 
@@ -130,8 +128,8 @@ const HighlyRecommendedSection = ({
               }
             }
           }
-        } catch (err) {
-          console.warn('Image processing error:', err);
+        } catch {
+          // fail silently for image processing
         }
 
         const cartPayload = {
@@ -145,8 +143,8 @@ const HighlyRecommendedSection = ({
         await dispatch(addItemToCart(cartPayload));
         dispatch(fetchCartItems());
       }
-    } catch (err) {
-      console.error('Cart error:', err);
+    } catch {
+      // fail silently
     }
   }, [dispatch, cart]);
 
@@ -159,21 +157,21 @@ const HighlyRecommendedSection = ({
 
   const getImageUrl = useCallback((product: any): string => {
     try {
-      if (!product.ImagePath || product.ImagePath.length < 5) return IMAGES.item11;
+      if (!product.ImagePath || product.ImagePath.length < 5) return IMAGES.item12;
       
       const parsed = typeof product.ImagePath === 'string' 
         ? JSON.parse(product.ImagePath) 
         : product.ImagePath;
       
       let image = Array.isArray(parsed) ? parsed[0] : '';
-      if (!image || typeof image !== 'string') return IMAGES.item11;
+      if (!image || typeof image !== 'string') return IMAGES.item12;
       
       if (!image.startsWith('http')) {
         image = `https://app.bmgjewellers.com${image}`;
       }
       return image;
-    } catch (err) {
-      return IMAGES.item11;
+    } catch {
+      return IMAGES.item12;
     }
   }, []);
 
@@ -236,6 +234,7 @@ const HighlyRecommendedSection = ({
         </Text>
         
         <View style={styles.headerActions}>
+          {/* If See All required, uncomment */}
           {/* {showSeeAll && (
             <TouchableOpacity 
               onPress={() => navigation.navigate('RecommendedProducts')}
@@ -246,9 +245,6 @@ const HighlyRecommendedSection = ({
               </Text>
             </TouchableOpacity>
           )} */}
-          {/* <TouchableOpacity onPress={handleRefresh}>
-            <Feather name="refresh-cw" size={20} color={colors.title} />
-          </TouchableOpacity> */}
         </View>
       </View>
 

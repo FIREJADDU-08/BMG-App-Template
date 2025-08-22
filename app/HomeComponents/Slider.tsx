@@ -19,7 +19,7 @@ const IMAGE_BASE_URL = "https://app.bmgjewellers.com"; // root domain for images
 export default function BannerSlider() {
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<any>(); 
 
   useEffect(() => {
     (async () => {

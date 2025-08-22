@@ -1,7 +1,8 @@
 import { API_BASE_URL } from "../Config/baseUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_IMAGE_URL='https://app.bmgjewellers.com'
+const API_IMAGE_URL = 'https://app.bmgjewellers.com';
+
 export const fetchOrderHistory = async () => {
   try {
     const token = await AsyncStorage.getItem("user_token");
@@ -62,12 +63,28 @@ const processImagePaths = (imagePath) => {
   }
 
   try {
-    const parsed = typeof imagePath === "string" && imagePath.trim().startsWith("[")
-      ? JSON.parse(imagePath)
-      : imagePath;
+    // Handle different formats of image paths
+    let paths = [];
+    
+    // Case 1: Already an array
+    if (Array.isArray(imagePath)) {
+      paths = imagePath;
+    } 
+    // Case 2: String that looks like a JSON array
+    else if (typeof imagePath === 'string' && imagePath.trim().startsWith('[')) {
+      paths = JSON.parse(imagePath);
+    }
+    // Case 3: Single URL string
+    else if (typeof imagePath === 'string') {
+      paths = [imagePath];
+    }
+    // Case 4: Unexpected format
+    else {
+      console.warn("Unexpected image path format:", imagePath);
+      return [];
+    }
 
-    const paths = Array.isArray(parsed) ? parsed : [parsed];
-
+    // Process each path
     const processedPaths = paths
       .map((path, index) => {
         if (!path) {
@@ -75,19 +92,25 @@ const processImagePaths = (imagePath) => {
           return null;
         }
 
-        const cleanPath = String(path).trim().replace(/^['"]|['"]$/g, "");
-
+        const cleanPath = String(path).trim();
+        
         if (!cleanPath) {
           console.warn(`Invalid path at index ${index}:`, cleanPath);
           return null;
         }
 
-        const fullPath = cleanPath.startsWith("http")
-          ? cleanPath
-          : `${API_IMAGE_URL}${cleanPath.startsWith("/") ? "" : "/"}${cleanPath}`;
+        // Check if it's already a full URL
+        if (cleanPath.startsWith("http")) {
+          return cleanPath;
+        }
         
-        console.log(`Processed path ${index}:`, fullPath);
-        return fullPath;
+        // Handle relative paths
+        let fullPath = cleanPath;
+        if (!cleanPath.startsWith("/")) {
+          fullPath = `/${cleanPath}`;
+        }
+        
+        return `${API_IMAGE_URL}${fullPath}`;
       })
       .filter((path) => path !== null);
 

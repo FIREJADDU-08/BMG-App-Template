@@ -65,7 +65,7 @@ const DEFAULT_IMAGE_URL = 'https://app.bmgjewellers.com/uploads/1144/8a953e21-4a
 const BASE_API_URL = 'https://app.bmgjewellers.com';
 
 // Types
-interface CartItemWithDetails {
+interface CartItemWithDetails { 
   sno: string;
   itemTagSno: string;
   fullDetails: {

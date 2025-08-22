@@ -51,24 +51,12 @@ const ImageSwiper = ({ data }) => {
           return <View style={{ width: SPACER }} key={index} />;
         }
 
-
         return (
           <View key={index} style={{ width: SIZE, alignItems: 'center' }}>
             <Animated.View style={[style, { overflow: 'hidden' }]}>
               <TouchableOpacity
                 activeOpacity={0.9}
-                onPressIn={() => {
-                  console.log('Pressed In:', {
-                    itemName: item.itemName || 'Unknown',
-                    subItemName: item.subItemName || 'Unknown',
-                  });
-                }}
                 onPress={() => {
-                  console.log('Navigating with:', {
-                    itemName: item.itemName || '',
-                    subItemName: item.subItemName || '',
-                  });
-
                   navigation.navigate('Products', {
                     itemName: item.itemName || '',
                     subItemName: item.subItemName || '',

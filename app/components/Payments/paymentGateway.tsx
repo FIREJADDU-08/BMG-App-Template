@@ -1,9 +1,9 @@
-// screens/PaymentGateway.tsx
 import React, { useEffect } from 'react';
 import { WebView, WebViewNavigation } from 'react-native-webview';
-import { SafeAreaView, Linking, Alert,ActivityIndicator } from 'react-native';
+import { SafeAreaView, Linking, Alert, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../Navigations/RootStackParamList';
+import { CommonActions } from '@react-navigation/native';
 
 type PaymentGatewayScreenProps = StackScreenProps<RootStackParamList, 'PaymentGateway'>;
 
@@ -28,18 +28,12 @@ const PaymentGateway = ({ route, navigation }: PaymentGatewayScreenProps) => {
         const orderId = params.get('orderId');
         
         if (status === 'success') {
-            navigation.replace('Myorder', { 
-                success: true,
-                orderDetails: {
-                    ...orderDetails,
-                    orderId: orderId || orderDetails.orderId
-                }
-            });
+            handlePaymentSuccess(orderId);
         } else {
-            navigation.replace('Myorder', { 
-                success: false,
-                orderDetails
-            });
+            // Check if payment was cancelled
+            const isCancelled = params.get('cancelled') === 'true' || status === 'cancelled';
+            
+            handlePaymentFailure(orderId, isCancelled);
         }
     };
 
@@ -50,22 +44,31 @@ const PaymentGateway = ({ route, navigation }: PaymentGatewayScreenProps) => {
             handlePaymentSuccess();
         } else if (navState.url.includes('payment-failure') || 
                  navState.url.includes('bmgjewellers://payment-result?status=failure')) {
-            handlePaymentFailure();
+            handlePaymentFailure(null, false);
+        } else if (navState.url.includes('payment-cancelled') || 
+                 navState.url.includes('bmgjewellers://payment-result?status=cancelled')) {
+            handlePaymentFailure(null, true);
         }
     };
 
-    const handlePaymentSuccess = () => {
-        navigation.replace('Myorder', { 
-            success: true,
-            orderDetails
-        });
+    const handlePaymentSuccess = (orderId?: string | null) => {
+        // Directly navigate to Home without showing modal
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+            })
+        );
     };
 
-    const handlePaymentFailure = () => {
-        navigation.replace('Myorder', { 
-            success: false,
-            orderDetails
-        });
+    const handlePaymentFailure = (orderId: string | null, isCancelled: boolean) => {
+        // Directly navigate to Home without showing modal
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+            })
+        );
     };
 
     return (
@@ -76,8 +79,13 @@ const PaymentGateway = ({ route, navigation }: PaymentGatewayScreenProps) => {
                 startInLoadingState={true}
                 onError={(error) => {
                     console.error('WebView error:', error);
-                    Alert.alert('Error', 'Payment failed to load');
-                    navigation.goBack();
+                    // Directly navigate to Home on error without showing modal
+                    navigation.dispatch(
+                        CommonActions.reset({
+                            index: 0,
+                            routes: [{ name: 'Home' }],
+                        })
+                    );
                 }}
                 renderLoading={() => (
                     <ActivityIndicator size="large" style={{ flex: 1 }} />
