@@ -1,5 +1,3 @@
-// screens/RecentlyShortlistedSection.tsx
-
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -43,9 +41,9 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Image path processing
+  // Enhanced image path processing function
   const processImagePath = useCallback(
-    (imagePath: string | string[] | null | undefined): string => {
+    (imagePath: any): string => {
       const fallbackImage = IMAGES.item13;
 
       if (!imagePath) return fallbackImage;
@@ -53,42 +51,61 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
       try {
         let imageUrl = '';
 
-        if (Array.isArray(imagePath)) {
-          const validImages = imagePath.filter(
-            img => img && typeof img === 'string' && img.trim() !== '',
-          );
-          imageUrl = validImages.length > 0 ? validImages[0] : '';
-        } else if (typeof imagePath === 'string') {
-          if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
-            try {
-              const parsedImages = JSON.parse(imagePath);
-              if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-                const validImages = parsedImages.filter(
-                  img => img && typeof img === 'string' && img.trim() !== '',
-                );
-                imageUrl = validImages.length > 0 ? validImages[0] : '';
-              }
-            } catch {
-              const match = imagePath.match(/"([^"]+)"/);
-              imageUrl = match ? match[1] : imagePath;
+        // Case 1: Direct string path (like "/uploads/app_banners/...")
+        if (typeof imagePath === 'string' && imagePath.startsWith('/') && !imagePath.startsWith('[')) {
+          imageUrl = imagePath;
+        }
+        // Case 2: JSON string array (like "[\"/uploads/product_images/...\", ...]")
+        else if (typeof imagePath === 'string' && imagePath.startsWith('[')) {
+          try {
+            const parsedImages = JSON.parse(imagePath);
+            if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+              imageUrl = parsedImages[0];
             }
+          } catch (parseError) {
+            console.warn('Failed to parse image JSON:', parseError);
+            // Try to extract the first image using regex
+            const match = imagePath.match(/"([^"]+)"/);
+            imageUrl = match ? match[1] : imagePath;
+          }
+        }
+        // Case 3: Already an array
+        else if (Array.isArray(imagePath) && imagePath.length > 0) {
+          imageUrl = imagePath[0];
+        }
+        // Case 4: Object with image property
+        else if (typeof imagePath === 'object' && imagePath !== null) {
+          if (imagePath.url) imageUrl = imagePath.url;
+          else if (imagePath.path) imageUrl = imagePath.path;
+          else if (imagePath.image) imageUrl = imagePath.image;
+        }
+        // Case 5: Other string formats
+        else if (typeof imagePath === 'string') {
+          imageUrl = imagePath;
+        }
+
+        // Clean up the image URL
+        if (imageUrl && typeof imageUrl === 'string') {
+          // Remove any quotes or brackets
+          imageUrl = imageUrl.replace(/["'[\]]/g, '').trim();
+          
+          // If empty after cleaning, return fallback
+          if (!imageUrl) return fallbackImage;
+
+          // Format the URL properly
+          if (imageUrl.startsWith('http')) {
+            return imageUrl;
+          } else if (imageUrl.startsWith('/')) {
+            return `https://app.bmgjewellers.com${imageUrl}`;
           } else {
-            imageUrl = imagePath.trim();
+            // Handle cases where the path might not start with /
+            return `https://app.bmgjewellers.com/${imageUrl.replace(/^\/+/, '')}`;
           }
         }
 
-        if (!imageUrl) return fallbackImage;
-
-        imageUrl = imageUrl.replace(/["'[\]]/g, '').trim();
-
-        if (imageUrl.startsWith('http')) {
-          return imageUrl;
-        } else if (imageUrl.startsWith('/')) {
-          return `https://app.bmgjewellers.com${imageUrl}`;
-        } else {
-          return `https://app.bmgjewellers.com/uploads/${imageUrl}`;
-        }
-      } catch {
+        return fallbackImage;
+      } catch (error) {
+        console.warn('Error processing image path:', error);
         return fallbackImage;
       }
     },
@@ -162,14 +179,8 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     navigation.navigate('RecentlyViewed');
   }, [navigation]);
 
-  const handleImageError = useCallback((productId: string) => {
-    setProducts(prevProducts =>
-      prevProducts.map(product =>
-        product.id === productId
-          ? { ...product, image: IMAGES.item13}
-          : product,
-      ),
-    );
+  const handleImageError = useCallback((imageUrl: string) => {
+    setFailedImages(prev => new Set(prev).add(imageUrl));
   }, []);
 
   const getWorkingImage = useCallback(
@@ -198,7 +209,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
             price={product.price}
             discount={product.discount}
             onPress={() => handleProductPress(product.id)}
-            onImageError={() => handleImageError(product.id)}
+            onImageError={() => handleImageError(product.image)}
             card3
             removelikebtn
           />

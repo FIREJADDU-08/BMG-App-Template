@@ -69,7 +69,7 @@ const PopularNearbySection = () => {
           <Text
             style={{ ...FONTS.fontRegular, fontSize: 13, color: colors.title }}
           >
-            Up to 60% off + up to $107 Cash BACK
+            Up to 60% off + up to ₹107 Cash BACK
           </Text>
         </View>
       </View>

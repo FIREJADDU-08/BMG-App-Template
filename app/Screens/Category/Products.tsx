@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -46,10 +45,12 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItemCount, setCartItemCount] = useState(0);
-  const [isFetching, setIsFetching] = useState(false); // Prevent duplicate fetches
+  const [isFetching, setIsFetching] = useState(false);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [appliedFilters, setAppliedFilters] = useState({});
 
-  // Enhanced filter state with default values
-  const [activeFilters, setActiveFilters] = useState({
+  // Default filter values
+  const defaultFilters = {
     gender: '',
     occasion: '',
     colorAccent: '',
@@ -57,57 +58,118 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
     sizeName: '',
     category: '',
     brand: '',
-    minGrandTotal: route.params?.minGrandTotal || 0,
-    maxGrandTotal: route.params?.maxGrandTotal || 10000000000,
-  });
+    minGrandTotal: 0,
+    maxGrandTotal: 10000000000,
+  };
 
-  // Handle route params
+  // Enhanced filter state with default values
+  const [activeFilters, setActiveFilters] = useState(defaultFilters);
+
+  // Track if this is the initial mount
+  const isInitialMount = useRef(true);
+  // Track navigation state to detect when we're coming back
+  const navigationState = useRef<any>();
+
+  // Reset all filters and state when component mounts or when route params change significantly
   useEffect(() => {
-    console.log('Route params received:', route.params);
-    
-    const {
-      itemName,
-      subItemName,
-      initialFilters,
-      gender,
-      occasion,
-      colorAccent,
-      materialFinish,
-      sizeName,
-      minGrandTotal,
-      maxGrandTotal,
-      category,
-      brand,
-      priceRange,
-    } = route.params || {};
+    // Check if we're coming from a different screen (not the same navigation state)
+    const isComingFromDifferentScreen = 
+      !navigationState.current || 
+      JSON.stringify(navigationState.current) !== JSON.stringify(navigation.getState());
 
-    const allFilters = {
-      ...initialFilters,
-      ...(gender && { gender }),
-      ...(occasion && { occasion }),
-      ...(colorAccent && { colorAccent }),
-      ...(materialFinish && { materialFinish }),
-      ...(sizeName && { sizeName }),
-      ...(category && { category }),
-      ...(brand && { brand }),
-      ...(minGrandTotal && { minGrandTotal }),
-      ...(maxGrandTotal && { maxGrandTotal }),
-      ...(priceRange && { 
-        minGrandTotal: priceRange.min, 
-        maxGrandTotal: priceRange.max 
-      }),
-    };
-
-    console.log('All merged filters from route:', allFilters);
-    
-    if (Object.keys(allFilters).length > 0) {
-      setActiveFilters(prev => ({
-        ...prev,
-        ...allFilters
-      }));
+    if (isInitialMount.current || isComingFromDifferentScreen) {
+      console.log('Resetting filters for fresh start');
+      
+      // Reset all filters
+      setSearchQuery('');
+      setAppliedFilters({});
+      setActiveFilters(defaultFilters);
       productService.resetPagination();
+      
+      const {
+        itemName,
+        subItemName,
+        initialFilters,
+        gender,
+        occasion,
+        colorAccent,
+        materialFinish,
+        sizeName,
+        minGrandTotal,
+        maxGrandTotal,
+        category,
+        brand,
+        priceRange,
+      } = route.params || {};
+
+      // Set category error message if itemName is provided
+      if (itemName) {
+        setCategoryError(`No products found for "${itemName}" category`);
+      } else {
+        setCategoryError(null);
+      }
+
+      const allFilters = {
+        ...defaultFilters,
+        ...initialFilters,
+        ...(gender && { gender }),
+        ...(occasion && { occasion }),
+        ...(colorAccent && { colorAccent }),
+        ...(materialFinish && { materialFinish }),
+        ...(sizeName && { sizeName }),
+        ...(category && { category }),
+        ...(brand && { brand }),
+        ...(minGrandTotal !== undefined && { minGrandTotal }),
+        ...(maxGrandTotal !== undefined && { maxGrandTotal }),
+        ...(priceRange && { 
+          minGrandTotal: priceRange.min, 
+          maxGrandTotal: priceRange.max 
+        }),
+      };
+
+      console.log('All merged filters from route:', allFilters);
+      
+      setActiveFilters(allFilters);
+      setAppliedFilters(allFilters);
+      
+      // Fetch products with new filters
+      fetchProducts(true);
     }
+
+    // Store current navigation state for future comparison
+    navigationState.current = navigation.getState();
+    isInitialMount.current = false;
+
+    return () => {
+      // Cleanup when component unmounts
+      console.log('Products component unmounting');
+    };
   }, [route.params]);
+
+  // Handle focus event to reset when coming back to this screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Products screen focused');
+      // Check if we need to reset based on navigation state
+      const currentState = navigation.getState();
+      const cameFromDifferentScreen = 
+        !navigationState.current || 
+        JSON.stringify(navigationState.current) !== JSON.stringify(currentState);
+      
+      if (cameFromDifferentScreen) {
+        console.log('Coming from different screen, resetting filters');
+        setSearchQuery('');
+        setAppliedFilters({});
+        setActiveFilters(defaultFilters);
+        productService.resetPagination();
+        fetchProducts(true);
+      }
+      
+      navigationState.current = currentState;
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   // Log active filters
   useEffect(() => {
@@ -121,9 +183,10 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         console.log('Executing debounced search for:', query);
         productService.resetPagination();
         setProducts([]);
+        setCategoryError(null);
         fetchProducts(true, query);
-      }, 300),
-    [activeFilters]
+      }, 500),
+    [appliedFilters]
   );
 
   // Cleanup debounced search to prevent memory leaks
@@ -136,19 +199,25 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
   const handleSearch = useCallback((query: string) => {
     console.log('Search query changed to:', query);
     setSearchQuery(query);
+    setCategoryError(null);
+    
     if (query.trim() === '') {
       productService.resetPagination();
       setProducts([]);
+      // Restore category error if itemName exists
+      if (route.params?.itemName) {
+        setCategoryError(`No products found for "${route.params.itemName}" category`);
+      }
       fetchProducts(true);
     } else {
       debouncedSearch(query);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, route.params]);
 
-  // Fetch products
+  // Fetch products with enhanced error handling
   const fetchProducts = useCallback(
     async (reset: boolean = false, search: string = searchQuery) => {
-      if (isFetching) return; // Prevent duplicate fetches
+      if (isFetching) return;
       setIsFetching(true);
 
       try {
@@ -169,7 +238,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         const filters = {
           itemName: route.params?.itemName,
           subItemName: route.params?.subItemName,
-          ...activeFilters,
+          ...appliedFilters,
           searchQuery: search.trim(),
         };
 
@@ -178,6 +247,15 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
 
         if (reset) {
           setProducts(data);
+          
+          // Check if no products found for specific category
+          if (data.length === 0 && route.params?.itemName && !search.trim()) {
+            setCategoryError(`No products found for "${route.params.itemName}" category`);
+          } else if (data.length === 0 && search.trim()) {
+            setCategoryError(`No products found for search "${search}"`);
+          } else {
+            setCategoryError(null);
+          }
         } else {
           setProducts(prev => [...prev, ...data]);
         }
@@ -185,7 +263,26 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         setError(null);
       } catch (err) {
         console.error('Error fetching products:', err);
-        setError('Failed to load products. Please check your connection and try again.');
+        
+        // Enhanced error handling with category-specific messages
+        let errorMessage = 'Failed to load products. Please check your connection and try again.';
+        
+        if (err instanceof Error) {
+          if (err.message.includes('Network connection error')) {
+            errorMessage = 'Network connection error. Please check your internet connection.';
+          } else if (err.message.includes('Invalid request')) {
+            if (route.params?.itemName) {
+              errorMessage = `Invalid category "${route.params.itemName}". Please try a different category.`;
+              setCategoryError(errorMessage);
+            } else {
+              errorMessage = 'Invalid search criteria. Please adjust your filters.';
+            }
+          } else if (err.message.includes('Server error')) {
+            errorMessage = 'Server temporarily unavailable. Please try again later.';
+          }
+        }
+        
+        setError(errorMessage);
         
         if (reset) {
           setProducts([]);
@@ -197,7 +294,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         setIsFetching(false);
       }
     },
-    [activeFilters, searchQuery, isFetching, route.params]
+    [appliedFilters, searchQuery, isFetching, route.params]
   );
 
   // Refresh handler
@@ -205,18 +302,15 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
     console.log('Refreshing products list');
     setRefreshing(true);
     setError(null);
+    setCategoryError(null);
     fetchProducts(true);
   }, [fetchProducts]);
-
-  // Load products on mount and filter changes
-  useEffect(() => {
-    console.log('Component mounted or filters changed, fetching products');
-    fetchProducts(true);
-  }, [activeFilters, route.params?.itemName, route.params?.subItemName, fetchProducts]);
 
   // Handle filter changes
   const handleFiltersChange = useCallback((filters: any) => {
     console.log('Filters changed:', filters);
+    setCategoryError(null);
+    
     setActiveFilters(prev => {
       const newFilters = { ...prev, ...filters };
       
@@ -225,6 +319,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
       );
       
       if (filtersChanged) {
+        setAppliedFilters(newFilters);
         setTimeout(() => {
           productService.resetPagination();
           setProducts([]);
@@ -255,7 +350,6 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
   // Handle scroll event
   const handleScroll = useCallback(
     (event: any) => {
-      // Extract properties immediately to avoid event pooling issues
       const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent || {};
       if (layoutMeasurement && contentOffset && contentSize) {
         debouncedHandleScroll({ layoutMeasurement, contentOffset, contentSize });
@@ -292,33 +386,30 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
   // Check if any filters are active
   const hasActiveFilters = useCallback(() => {
     return searchQuery.trim() !== '' || 
-           Object.entries(activeFilters).some(([key, value]) => {
+           Object.entries(appliedFilters).some(([key, value]) => {
              if (key === 'minGrandTotal') return value > 0;
              if (key === 'maxGrandTotal') return value < 10000000000;
              return value && value !== '';
            });
-  }, [searchQuery, activeFilters]);
+  }, [searchQuery, appliedFilters]);
 
   // Clear all filters
   const clearAllFilters = useCallback(() => {
     console.log('Clearing all filters');
     setSearchQuery('');
-    setActiveFilters({
-      gender: '',
-      occasion: '',
-      colorAccent: '',
-      materialFinish: '',
-      sizeName: '',
-      category: '',
-      brand: '',
-      minGrandTotal: 0,
-      maxGrandTotal: 10000000000,
-    });
+    setCategoryError(null);
+    setActiveFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
     productService.resetPagination();
     fetchProducts(true);
   }, [fetchProducts]);
 
-  // Render product grid
+  // Navigate to different category
+  const navigateToCategory = useCallback(() => {
+    navigation.navigate('Search');
+  }, [navigation]);
+
+  // Render product grid with enhanced error handling
   const renderProducts = useCallback(() => {
     if (loading && products.length === 0) {
       return (
@@ -336,7 +427,58 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
       );
     }
 
-    if (error && products.length === 0) {
+    // Show category-specific error
+    if (categoryError && products.length === 0 && !loading) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
+          <MaterialIcons name="category" size={48} color={colors.text} />
+          <Text style={{ 
+            color: colors.text, 
+            textAlign: 'center', 
+            marginTop: 16,
+            marginHorizontal: 20,
+            ...FONTS.fontMedium,
+            fontSize: 18,
+            lineHeight: 24
+          }}>
+            {categoryError}
+          </Text>
+          <Text style={{
+            color: colors.text,
+            textAlign: 'center',
+            marginTop: 8,
+            marginHorizontal: 20,
+            ...FONTS.fontRegular,
+            fontSize: 14,
+            opacity: 0.7,
+            lineHeight: 20
+          }}>
+            This category might be empty or unavailable.{'\n'}
+            Try searching for products or browse other categories.
+          </Text>
+          
+          <View style={{ flexDirection: 'row', marginTop: 20 }}>
+            <TouchableOpacity
+              onPress={navigateToCategory}
+              style={{
+                backgroundColor: colors.primary,
+                paddingHorizontal: 20,
+                paddingVertical: 12,
+                borderRadius: 8,
+                marginRight: 12
+              }}
+            >
+              <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>
+                Browse Categories
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    // Show general error
+    if (error && products.length === 0 && !categoryError) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
           <MaterialIcons name="error-outline" size={48} color={colors.text} />
@@ -369,7 +511,8 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
       );
     }
 
-    if (products.length === 0) {
+    // Show no products found for search/filters
+    if (products.length === 0 && !categoryError) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
           <MaterialIcons name="search-off" size={48} color={colors.text} />
@@ -426,7 +569,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         ))}
       </View>
     );
-  }, [loading, error, products, colors, clearAllFilters, fetchProducts, addItemToWishList, addItemToCart, navigation]);
+  }, [loading, error, categoryError, products, colors, clearAllFilters, fetchProducts, addItemToWishList, addItemToCart, navigation, navigateToCategory]);
 
   return (
     <SafeAreaView style={{ backgroundColor: colors.background, flex: 1 }}>
@@ -624,7 +767,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
             />
           }
         >
-          {hasActiveFilters() && (
+          {hasActiveFilters() && !categoryError && (
             <View style={{ 
               flexDirection: 'row', 
               alignItems: 'center', 
@@ -642,7 +785,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
                 fontSize: 14,
                 flex: 1
               }}>
-                {Object.entries(activeFilters)
+                {Object.entries(appliedFilters)
                   .filter(([key, value]) => {
                     if (key === 'minGrandTotal') return value > 0;
                     if (key === 'maxGrandTotal') return value < 10000000000;

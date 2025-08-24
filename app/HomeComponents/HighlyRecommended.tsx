@@ -45,7 +45,6 @@ const HighlyRecommendedSection = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  console.log(`✅ HighlyRecommendedSection loaded with ${products.length} products`);
 
   // Fetch data on mount
   useEffect(() => {
@@ -58,8 +57,9 @@ const HighlyRecommendedSection = ({
           dispatch(fetchWishList()),
           fetchNewArrivals()
         ]);
-      } catch {
+      } catch (err) {
         setError('Failed to load products. Please try again.');
+        console.error('Initial data loading error:', err);
       } finally {
         setLoading(false);
       }
@@ -71,7 +71,8 @@ const HighlyRecommendedSection = ({
     try {
       const data = await getNewArrivalProducts();
       setProducts(data || []);
-    } catch {
+    } catch (err) {
+      console.error('Failed to load products:', err);
       throw new Error("Failed to load products");
     }
   }, []);
@@ -85,7 +86,8 @@ const HighlyRecommendedSection = ({
         dispatch(fetchWishList()),
         dispatch(fetchCartItems())
       ]);
-    } catch {
+    } catch (err) {
+      console.error('Refresh error:', err);
       setError('Failed to refresh data');
     } finally {
       setRefreshing(false);
@@ -101,52 +103,35 @@ const HighlyRecommendedSection = ({
       } else {
         await dispatch(addProductToWishList(product));
       }
-      dispatch(fetchWishList());
-    } catch {
-      // silently fail
+      // Don't need to fetch again as the state should be updated
+    } catch (err) {
+      console.error('Wishlist toggle error:', err);
     }
   }, [dispatch, wishList]);
 
-  const handleCartAction = useCallback(async (product: any) => {
-    try {
-      const existingItem = cart.find((item) => item.itemTagSno === product.SNO);
+const handleCartAction = useCallback(async (product: any) => {
+  try {
+    const existingItem = cart.find((item) => item.itemTagSno === product.SNO);
+    
+    if (existingItem) {
+      await dispatch(removeItemFromCart(existingItem.sno));
+    } else {
+      const imageUrl = getImageUrl(product);
       
-      if (existingItem) {
-        await dispatch(removeItemFromCart(existingItem.sno));
-        dispatch(fetchCartItems());
-      } else {
-        let imageUrl = '';
-        try {
-          if (product.ImagePath) {
-            const parsed = typeof product.ImagePath === 'string' 
-              ? JSON.parse(product.ImagePath) 
-              : product.ImagePath;
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              imageUrl = parsed[0];
-              if (imageUrl && !imageUrl.startsWith('http')) {
-                imageUrl = `https://app.bmgjewellers.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-              }
-            }
-          }
-        } catch {
-          // fail silently for image processing
-        }
+      const cartPayload = {
+        itemTagSno: product.SNO,
+        imagePath: imageUrl,
+        quantity: 1,
+        price: parseFloat(product.GrandTotal || product.GrossAmount || '0'),
+        productData: product
+      };
 
-        const cartPayload = {
-          itemTagSno: product.SNO,
-          imagePath: imageUrl,
-          quantity: 1,
-          price: parseFloat(product.GrandTotal || product.GrossAmount || '0'),
-          productData: product
-        };
-
-        await dispatch(addItemToCart(cartPayload));
-        dispatch(fetchCartItems());
-      }
-    } catch {
-      // fail silently
+      await dispatch(addItemToCart(cartPayload));
     }
-  }, [dispatch, cart]);
+  } catch (err) {
+    console.error('Cart action error:', err);
+  }
+}, [dispatch, cart, getImageUrl]); // Add getImageUrl to dependencies
 
   const navigateToProductDetails = useCallback((product: any) => {
     navigation.navigate('ProductDetails', { 
@@ -155,28 +140,71 @@ const HighlyRecommendedSection = ({
     });
   }, [navigation]);
 
-  const getImageUrl = useCallback((product: any): string => {
-    try {
-      if (!product.ImagePath || product.ImagePath.length < 5) return IMAGES.item12;
-      
-      const parsed = typeof product.ImagePath === 'string' 
-        ? JSON.parse(product.ImagePath) 
-        : product.ImagePath;
-      
-      let image = Array.isArray(parsed) ? parsed[0] : '';
-      if (!image || typeof image !== 'string') return IMAGES.item12;
-      
-      if (!image.startsWith('http')) {
-        image = `https://app.bmgjewellers.com${image}`;
-      }
-      return image;
-    } catch {
+const getImageUrl = useCallback((product: any): string => {
+  try {
+    // If there's no ImagePath or it's too short, return default image
+    if (!product.ImagePath || product.ImagePath.length < 5) {
       return IMAGES.item12;
     }
-  }, []);
+    
+    // Case 1: Direct image path (like "/uploads/app_banners/...")
+    if (typeof product.ImagePath === 'string' && 
+        product.ImagePath.startsWith('/') && 
+        !product.ImagePath.startsWith('[')) {
+      
+      let imageUrl = product.ImagePath;
+      if (!imageUrl.startsWith('http')) {
+        imageUrl = `https://app.bmgjewellers.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      }
+      return imageUrl;
+    }
+    
+    // Case 2: JSON string array (like "[\"/uploads/product_images/...\", ...]")
+    let parsedImages;
+    if (typeof product.ImagePath === 'string') {
+      try {
+        parsedImages = JSON.parse(product.ImagePath);
+      } catch (e) {
+        // If it's not valid JSON, try to handle it as a single string
+        if (product.ImagePath.startsWith('/')) {
+          let imageUrl = product.ImagePath;
+          if (!imageUrl.startsWith('http')) {
+            imageUrl = `https://app.bmgjewellers.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+          }
+          return imageUrl;
+        }
+        return IMAGES.item12;
+      }
+    } else {
+      // Case 3: Already an array
+      parsedImages = product.ImagePath;
+    }
+    
+    // Get the first image from the array
+    let image = Array.isArray(parsedImages) && parsedImages.length > 0 
+      ? parsedImages[0] 
+      : '';
+    
+    // Handle case where image might be null or undefined
+    if (!image || typeof image !== 'string') {
+      return IMAGES.item12;
+    }
+    
+    // Ensure proper URL format
+    if (!image.startsWith('http')) {
+      image = `https://app.bmgjewellers.com${image.startsWith('/') ? '' : '/'}${image}`;
+    }
+    
+    return image;
+  } catch (err) {
+    console.error('Image URL parsing error:', err);
+    return IMAGES.item12;
+  }
+}, []);
 
   const memoizedProducts = useMemo(() => products, [products]);
 
+  // Render loading state
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -188,7 +216,8 @@ const HighlyRecommendedSection = ({
     );
   }
 
-  if (error) {
+  // Render error state
+  if (error && products.length === 0) {
     return (
       <View style={styles.errorContainer}>
         <Feather name="alert-circle" size={40} color={COLORS.danger} />
@@ -196,16 +225,17 @@ const HighlyRecommendedSection = ({
           {error}
         </Text>
         <TouchableOpacity 
-          style={styles.refreshButton}
+          style={[styles.refreshButton, { borderColor: colors.border }]}
           onPress={handleRefresh}
         >
           <Feather name="refresh-cw" size={20} color={COLORS.primary} />
-          <Text style={styles.refreshText}>Try Again</Text>
+          <Text style={[styles.refreshText, { color: COLORS.primary }]}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // Render empty state
   if (!loading && products.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -217,10 +247,11 @@ const HighlyRecommendedSection = ({
           Check back later for new arrivals
         </Text>
         <TouchableOpacity 
-          style={styles.refreshButton}
+          style={[styles.refreshButton, { borderColor: colors.border }]}
           onPress={handleRefresh}
         >
           <Feather name="refresh-cw" size={20} color={COLORS.primary} />
+          <Text style={[styles.refreshText, { color: COLORS.primary }]}>Refresh</Text>
         </TouchableOpacity>
       </View>
     );
@@ -233,19 +264,17 @@ const HighlyRecommendedSection = ({
           {title}
         </Text>
         
-        <View style={styles.headerActions}>
-          {/* If See All required, uncomment */}
-          {/* {showSeeAll && (
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('RecommendedProducts')}
-              style={styles.seeAllButton}
-            >
-              <Text style={[styles.seeAllText, { color: colors.title }]}>
-                See All
-              </Text>
-            </TouchableOpacity>
-          )} */}
-        </View>
+        {showSeeAll && (
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('RecommendedProducts')}
+            style={styles.seeAllButton}
+          >
+            <Text style={[styles.seeAllText, { color: colors.title }]}>
+              See All
+            </Text>
+            <Feather name="chevron-right" size={16} color={colors.title} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
@@ -261,40 +290,38 @@ const HighlyRecommendedSection = ({
           />
         }
       >
-        <View style={styles.productsList}>
-          {memoizedProducts.map((product) => {
-            const inWishList = wishList.some((item) => item.SNO === product.SNO);
-            const cartItem = cart.find((item) => item.itemTagSno === product.SNO);
-            const imageUrl = getImageUrl(product);
+        {memoizedProducts.map((product) => {
+          const inWishList = wishList.some((item) => item.SNO === product.SNO);
+          const cartItem = cart.find((item) => item.itemTagSno === product.SNO);
+          const imageUrl = getImageUrl(product);
 
-            return (
-              <View
-                key={`product-${product.SNO}`}
-                style={styles.productWrapper}
-              >
-                <CardStyle1
-                  id={product.SNO}
-                  image={imageUrl}
-                  title={product.ITEMNAME || 'Product'}
-                  price={`₹${product.GrandTotal || product.GrossAmount || 0}`}
-                  onPress={() => navigateToProductDetails(product)}
-                  onPress1={() => toggleWishList(product)}
-                  onPress2={() => handleCartAction(product)}
-                  closebtn
-                  wishlistActive={inWishList}
-                  cartActive={!!cartItem}
-                  product={product}
-                  cartItemId={cartItem?.sno}
-                />
-              </View>
-            );
-          })}
-        </View>
+          return (
+            <View
+              key={`product-${product.SNO}`}
+              style={styles.productWrapper}
+            >
+              <CardStyle1
+                id={product.SNO}
+                image={imageUrl}
+                title={product.ITEMNAME || 'Product'}
+                price={`₹${product.GrandTotal || product.GrossAmount || 0}`}
+                onPress={() => navigateToProductDetails(product)}
+                onPress1={() => toggleWishList(product)}
+                onPress2={() => handleCartAction(product)}
+                closebtn
+                wishlistActive={inWishList}
+                cartActive={!!cartItem}
+                product={product}
+                cartItemId={cartItem?.sno}
+              />
+            </View>
+          );
+        })}
       </ScrollView>
 
       <View style={styles.decorativeBorder}>
         <Image 
-          source={require('../assets/images/border2.png')} 
+          source={IMAGES.border2} 
           style={styles.borderImage}
           resizeMode="contain"
         />
@@ -305,23 +332,24 @@ const HighlyRecommendedSection = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 25
+    paddingTop: 25,
+    position: 'relative',
   },
   loadingContainer: {
-    flex: 1,
     padding: 20,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: 200,
   },
   loadingText: {
     marginTop: 10,
     ...FONTS.fontRegular
   },
   errorContainer: {
-    flex: 1,
     padding: 20,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: 200,
   },
   errorText: {
     marginTop: 15,
@@ -329,10 +357,10 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   emptyContainer: {
-    flex: 1,
     padding: 20,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: 200,
   },
   emptyTitle: {
     marginTop: 15,
@@ -347,55 +375,55 @@ const styles = StyleSheet.create({
     marginTop: 15,
     padding: 10,
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 15,
   },
   refreshText: {
     marginLeft: 5,
-    color: COLORS.primary,
     ...FONTS.fontRegular
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15
+    marginBottom: 15,
+    paddingHorizontal: 15,
   },
   title: {
     ...FONTS.Marcellus,
     fontSize: 24,
-    lineHeight: 30
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center'
+    lineHeight: 30,
+    flex: 1,
   },
   seeAllButton: {
-    marginRight: 15
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   seeAllText: {
     ...FONTS.fontRegular,
-    fontSize: 13
+    fontSize: 13,
+    marginRight: 2,
   },
   productsContainer: {
     paddingHorizontal: 15,
-    paddingBottom: 20
-  },
-  productsList: {
-    flexDirection: 'row',
-    gap: 15
+    paddingBottom: 20,
   },
   productWrapper: {
-    width: SIZES.width / 2.3
+    width: SIZES.width / 2.3,
+    marginRight: 15,
   },
   decorativeBorder: {
+    position: 'absolute',
     top: 60,
     left: 0,
-    position: 'absolute',
-    zIndex: -1
+    right: 0,
+    zIndex: -1,
   },
   borderImage: {
     width: '100%',
-    height: '100%'
+    height: '100%',
   }
 });
 

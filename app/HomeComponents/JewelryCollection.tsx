@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { 
   View, 
   Text, 
@@ -6,85 +6,191 @@ import {
   TouchableOpacity, 
   ScrollView, 
   ActivityIndicator, 
-  StyleSheet 
+  StyleSheet,
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { GlobalStyleSheet } from '../constants/StyleSheet';
 import { FONTS, COLORS } from '../constants/theme';
 import { getMainCategoryImages } from '../Services/CategoryImageService';
+import IMAGES from '../constants/Images';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = 90;
+const CARD_MARGIN = 15;
 
 const JewelryCollection = () => {
   const theme = useTheme();
   const { colors } = theme;
-  const navigation = useNavigation(); // This is the critical fix
+  const navigation = useNavigation();
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchCategories = useCallback(async () => {
+  const processImagePath = useCallback((imagePath) => {
     try {
-      setLoading(true);
-      const data = await getMainCategoryImages();
-      setCategories(data);
+      let parsedImages = [];
+      
+      if (Array.isArray(imagePath)) {
+        parsedImages = imagePath;
+      } else if (typeof imagePath === 'string') {
+        if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
+          parsedImages = JSON.parse(imagePath);
+        } else {
+          parsedImages = [imagePath];
+        }
+      }
+
+      const validImages = parsedImages
+        .filter(img => img && typeof img === 'string' && img.trim() !== '')
+        .map(img => {
+          const cleanImg = img.trim();
+          if (cleanImg.startsWith('http')) {
+            return cleanImg;
+          } else if (cleanImg.startsWith('/uploads')) {
+            return `https://app.bmgjewellers.com${cleanImg}`;
+          } else {
+            return `https://app.bmgjewellers.com/uploads/${cleanImg}`;
+          }
+        });
+
+      return validImages.length > 0 ? validImages[0] : null;
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      console.warn('ImagePath processing failed:', err);
+      return null;
     }
   }, []);
+
+  const fetchCategories = useCallback(async (isRefreshing = false) => {
+    try {
+      isRefreshing ? setRefreshing(true) : setLoading(true);
+      setError(null);
+      
+      const data = await getMainCategoryImages();
+      
+      const validCategories = data
+        .filter(category => category.name)
+        .map(category => ({
+          ...category,
+          image: processImagePath(category.image) || IMAGES.item13
+        }));
+      
+      setCategories(validCategories);
+    } catch (err) {
+      setError(err.message || 'Failed to load categories');
+      console.error('Fetch categories error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [processImagePath]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
-  const handlePress = (categoryName) => {
-    if (navigation) { // Additional safety check
-      navigation.navigate('Products', { itemName: categoryName });
-    }
-  };
+  const onRefresh = useCallback(() => {
+    fetchCategories(true);
+  }, [fetchCategories]);
 
-  if (loading) {
+  const handlePress = useCallback((categoryName) => {
+    navigation.navigate('Products', { 
+      itemName: categoryName,
+    });
+  }, [navigation]);
+
+  const handleSeeAll = useCallback(() => {
+    navigation.navigate('Category', {
+      categories: categories,
+    });
+  }, [navigation, categories]);
+
+  const renderCategoryItem = useCallback(({ item }) => (
+    <TouchableOpacity
+      style={styles.categoryItem}
+      onPress={() => handlePress(item.name)}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.imageContainer, { backgroundColor: colors.card }]}>
+        <Image
+          source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+          style={styles.image}
+          resizeMode="contain"
+          onError={() => console.warn(`Failed to load image for ${item.name}`)}
+        />
+      </View>
+      <Text 
+        style={[styles.categoryName, { color: colors.text }]}
+        numberOfLines={2}
+        ellipsizeMode="tail"
+      >
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  ), [colors, handlePress]);
+
+  if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>Loading collections...</Text>
       </View>
     );
   }
 
-  if (error) {
+  if (error && categories.length === 0) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[styles.container, styles.errorContainer, { backgroundColor: colors.background }]}>
+        <Text style={styles.errorText}>⚠️</Text>
+        <Text style={[styles.errorMessage, { color: colors.text }]}>
+          {error}
+        </Text>
+        <TouchableOpacity 
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={fetchCategories}
+        >
+          <Text style={styles.retryText}>Try Again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.text }]}>
-        Curate Your Perfect{"\n"}Jewelry Collection
-      </Text>
-      
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={styles.categoryItem}
-            onPress={() => handlePress(category.name)}
-          >
-            <View style={[styles.imageContainer, { backgroundColor: colors.card }]}>
-              <Image
-                source={{ uri: category.image }}
-                style={styles.image}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={[styles.categoryName, { color: colors.text }]}>
-              {category.name}
+      <View style={styles.titleContainer}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Curate Your Perfect{"\n"}Jewelry Collection
+        </Text>
+        {categories.length > 0 && (
+          <TouchableOpacity onPress={handleSeeAll}>
+            <Text style={[styles.seeAllText, { color: colors.primary }]}>
+              See All
             </Text>
           </TouchableOpacity>
+        )}
+      </View>
+      
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
+        {categories.slice(0, 6).map((category) => (
+          <View key={category.id}>
+            {renderCategoryItem({ item: category })}
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -93,55 +199,96 @@ const JewelryCollection = () => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 15,
+    paddingVertical: 20,
+    minHeight: 180,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 15,
+    marginBottom: 20,
+  },
+  scrollContent: {
+    paddingHorizontal: 15,
   },
   title: {
     ...FONTS.Marcellus,
-    fontSize: 20,
-    marginBottom: 15,
+    fontSize: 22,
+    lineHeight: 30,
+    flex: 1,
+  },
+  seeAllText: {
+    ...FONTS.fontMedium,
+    fontSize: 14,
   },
   categoryItem: {
-    marginRight: 20,
+    marginRight: CARD_MARGIN,
     alignItems: 'center',
-    width: 80,
-   
+    width: CARD_WIDTH,
   },
   imageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
+    borderRadius: CARD_WIDTH / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   image: {
-    width: 50,
-    height: 50,
+    width: CARD_WIDTH - 30,
+    height: CARD_WIDTH - 30,
   },
   categoryName: {
     ...FONTS.Marcellus,
     fontSize: 13,
     textAlign: 'center',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-    textOverflow: 'ellipsis',
+    maxWidth: CARD_WIDTH,
   },
   loadingContainer: {
-    height: 150,
     justifyContent: 'center',
     alignItems: 'center',
-    
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+    ...FONTS.fontRegular,
+    fontSize: 14,
   },
   errorContainer: {
-    height: 150,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   errorText: {
-    color: COLORS.danger,
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  errorMessage: {
     ...FONTS.fontRegular,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryText: {
+    color: 'white',
+    ...FONTS.fontMedium,
+    fontSize: 14,
   },
 });
 
-export default JewelryCollection;
+export default memo(JewelryCollection);
