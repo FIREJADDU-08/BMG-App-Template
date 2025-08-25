@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BMG Jewellers Pvt Ltd",
-    "slug": "bmg-template-app",
+    "slug": "bmg-app-template",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/bmg.png",
@@ -33,10 +33,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "6a5fb658-7698-44d1-8515-8bed520f341c"
+        "projectId": "cc5b2af9-39dd-42f5-adbc-f4f1968da8d1"
       }
     },
-    "owner": "brightechsoftware",
+    "owner": "kiruba08",
     "plugins": [
       "expo-font",
       "expo-video"
