@@ -139,7 +139,7 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
       </View>
 
       {/* Featured Offers */}
-      <View style={[GlobalStyleSheet.container, { marginTop: 0, paddingTop: 0, paddingBottom: 0 }]}>
+      {/* <View style={[GlobalStyleSheet.container, { marginTop: 0, paddingTop: 0, paddingBottom: 0 }]}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Text style={{ ...FONTS.Marcellus, fontSize: 20, color: colors.title }}>Featured Offer For You</Text>
           <TouchableOpacity>
@@ -172,7 +172,7 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
             ))}
           </ScrollView>
         </View>
-      </View>
+      </View> */}
     </View>
   );
 };

@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   checkbox: {
     paddingHorizontal: 0,
-    paddingVertical: 5,
+    paddingVertical: 2,
     marginTop: 15,
   },
   checkboxLabel: (colors: any) => ({

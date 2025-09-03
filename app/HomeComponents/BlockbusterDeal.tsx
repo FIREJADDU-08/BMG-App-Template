@@ -91,11 +91,11 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
           <Text style={{ ...FONTS.Marcellus, fontSize: 20, color: colors.title }}>
             Blockbuster deals
           </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Products')}>
+          {/* <TouchableOpacity onPress={() => navigation.navigate('Products')}>
             <Text style={{ ...FONTS.fontRegular, fontSize: 13, color: colors.title }}>
               See All Deals
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
 

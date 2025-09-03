@@ -69,9 +69,9 @@ const SponsoredProducts = () => {
       <View style={[GlobalStyleSheet.container, { paddingBottom: 5 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ ...FONTS.Marcellus, fontSize: 20, color: colors.title }}>Best Designs</Text>
-          <TouchableOpacity>
+          {/* <TouchableOpacity>
             <Text style={{ ...FONTS.fontRegular, fontSize: 13, color: colors.title }}>See All</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
         <View style={{ marginHorizontal: -15, marginTop: 20 }}>
           <ScrollView

@@ -171,7 +171,7 @@ const Onbording = ({ navigation }: OnbordingScreenProps) => {
                         >
                             <Button
                                 onPress={() => onScroll(sliderIndex)}
-                                title={sliderIndex === DATA.length ? 'Get Started' : 'Next'}
+                                title={sliderIndex === DATA.length ? 'Start' : 'Next'}
                                 btnRounded
                                 color={COLORS.primary}
                             />

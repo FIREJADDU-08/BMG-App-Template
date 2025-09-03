@@ -148,15 +148,21 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching recently viewed products...');
       const data = await getRecentlyViewedProducts();
+      console.log('Received data:', data);
 
       if (data && Array.isArray(data)) {
+        console.log('Processing products, count:', data.length);
         const processedProducts = processProducts(data);
+        console.log('Processed products:', processedProducts);
         setProducts(processedProducts);
       } else {
+        console.log('No data or invalid format');
         setProducts([]);
       }
-    } catch {
+    } catch (error) {
+      console.log('Error fetching recently viewed:', error);
       setError('Failed to load recently viewed products. Please try again.');
       setProducts([]);
     } finally {
@@ -355,6 +361,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    marginBottom: 15,
   },
   title: {
     ...FONTS.Marcellus,
@@ -367,7 +375,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     marginHorizontal: -15,
-    marginTop: 20,
   },
   scrollContent: {
     paddingHorizontal: 15,
@@ -380,7 +387,7 @@ const styles = StyleSheet.create({
   productsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 15,
   },
   productContainer: {
     width: CARD_WIDTH,
