@@ -13,13 +13,14 @@ import {
 import { useTheme } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { GlobalStyleSheet } from '../constants/StyleSheet';
-import { FONTS, COLORS } from '../constants/theme';
+import { FONTS, COLORS, SIZES } from '../constants/theme';
 import { getMainCategoryImages } from '../Services/CategoryImageService';
 import IMAGES from '../constants/Images';
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get('screen'); // updated to match your theme
+
 const CARD_WIDTH = 90;
-const CARD_MARGIN = 15;
+const CARD_MARGIN = SIZES.margin - 5; // dynamic margin
 
 const JewelryCollection = () => {
   const theme = useTheme();
@@ -150,7 +151,7 @@ const JewelryCollection = () => {
           {error}
         </Text>
         <TouchableOpacity 
-          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          style={[styles.retryButton, { backgroundColor: COLORS.primary }]}
           onPress={fetchCategories}
         >
           <Text style={styles.retryText}>Try Again</Text>
@@ -167,7 +168,7 @@ const JewelryCollection = () => {
         </Text>
         {categories.length > 0 && (
           <TouchableOpacity onPress={handleSeeAll}>
-            <Text style={[styles.seeAllText, { color: colors.primary }]}>
+            <Text style={[styles.seeAllText, { color: COLORS.primary }]}>
               See All
             </Text>
           </TouchableOpacity>
@@ -199,28 +200,27 @@ const JewelryCollection = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 20,
+    paddingVertical: SIZES.padding,
     minHeight: 180,
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 15,
+    marginHorizontal: SIZES.margin,
     marginBottom: 20,
   },
   scrollContent: {
-    paddingHorizontal: 15,
+    paddingHorizontal: SIZES.margin,
   },
   title: {
-    ...FONTS.Marcellus,
-    fontSize: 22,
+    ...FONTS.h3,
     lineHeight: 30,
     flex: 1,
   },
   seeAllText: {
     ...FONTS.fontMedium,
-    fontSize: 14,
+    fontSize: SIZES.font,
   },
   categoryItem: {
     marginRight: CARD_MARGIN,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: COLORS.black,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     ...FONTS.Marcellus,
-    fontSize: 13,
+    fontSize: SIZES.fontSm,
     textAlign: 'center',
     maxWidth: CARD_WIDTH,
   },
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     ...FONTS.fontRegular,
-    fontSize: 14,
+    fontSize: SIZES.font,
   },
   errorContainer: {
     justifyContent: 'center',
@@ -275,19 +275,19 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     ...FONTS.fontRegular,
-    fontSize: 14,
+    fontSize: SIZES.font,
     textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: SIZES.radius_lg,
   },
   retryText: {
-    color: 'white',
+    color: COLORS.white,
     ...FONTS.fontMedium,
-    fontSize: 14,
+    fontSize: SIZES.font,
   },
 });
 

@@ -19,9 +19,8 @@ import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { createOrder } from '../../Services/OrderCreateService';
-import { initiatePayment, getPaymentRedirectUrl } from '../../Services/PaymentService';
+import { initiatePayment, getPaymentRedirectUrl, checkPaymentStatus } from '../../Services/PaymentService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CommonActions } from '@react-navigation/native';
 
 // Define CartItemWithDetails type locally
 type CartItemWithDetails = {
@@ -85,7 +84,7 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
     const [userContact, setUserContact] = React.useState('');
 
     // Get data from navigation params
-    const { products, selectedAddress, orderSummary } = route.params || {};
+    const { products, selectedAddress, orderSummary, paymentResult } = route.params || {};
 
     React.useEffect(() => {
         const fetchUserData = async () => {
@@ -101,6 +100,13 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
 
         fetchUserData();
     }, []);
+
+    // Handle payment result when coming back from payment gateway
+    React.useEffect(() => {
+        if (paymentResult) {
+            handlePaymentResult(paymentResult);
+        }
+    }, [paymentResult]);
 
     const paymentMethods: PaymentMethod[] = [
         {
@@ -139,7 +145,7 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
         }
     };
 
-    const prepareOrderData = (paymentMethod: string) => {
+    const prepareOrderData = (paymentMethod: string, paymentStatus: string = 'pending') => {
         return {
             totalAmount: orderSummary?.grandTotal || 0,
             address: formatAddress(selectedAddress),
@@ -154,8 +160,99 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
             })),
             email: selectedAddress?.email || userEmail,
             contact: selectedAddress?.phone || userContact,
-            paymentMethod: paymentMethod
+            paymentMode: paymentMethod.toUpperCase(),
+            paymentStatus: paymentStatus.toUpperCase()
         };
+    };
+
+    const getPaymentStatusText = (method: string, status: string = 'pending') => {
+        if (method === 'cod') {
+            return 'COD - Payment Pending';
+        } else if (method === 'razorpay') {
+            return status === 'completed' ? 'Online - Paid' : 'Online - Payment Pending';
+        }
+        return 'Payment Pending';
+    };
+
+    const getOrderStatus = (method: string, paymentStatus: string = 'pending') => {
+        if (method === 'cod') {
+            return 'CONFIRMED';
+        } else if (method === 'razorpay') {
+            return paymentStatus === 'completed' ? 'CONFIRMED' : 'PENDING';
+        }
+        return 'PENDING';
+    };
+
+    const handlePaymentResult = async (result: any) => {
+        const { status, orderId, paymentId, error } = result;
+        
+        // Determine payment mode and status based on result
+        const paymentMode = 'ONLINE';
+        
+        // For online payments, verify the payment status with the server
+        let paymentStatus = 'PENDING';
+        let finalStatus = status;
+        
+        if (status === 'completed' || status === 'success') {
+            try {
+                // Call the payment status API to verify the payment
+                const statusResponse = await checkPaymentStatus({
+                    merchantTxnNo: orderId,
+                    originalTxnNo: orderId,
+                    transactionType: "STATUS"
+                });
+                
+                console.log('Payment status API response:', statusResponse);
+                
+                // Check if payment is actually successful based on API response
+                if (statusResponse && statusResponse.responseCode === "R1000" && statusResponse.status === "SUCCESS") {
+                    paymentStatus = 'PAID';
+                    finalStatus = 'completed';
+                } else {
+                    paymentStatus = 'FAILED';
+                    finalStatus = 'failed';
+                }
+            } catch (statusError) {
+                console.error('Error verifying payment status:', statusError);
+                paymentStatus = 'PENDING';
+                finalStatus = 'failed';
+            }
+        } else {
+            paymentStatus = 'FAILED';
+        }
+        
+        const orderDetails = {
+            orderId: orderId,
+            items: products,
+            total: orderSummary?.grandTotal || 0,
+            date: new Date().toISOString(),
+            status: getOrderStatus('razorpay', finalStatus),
+            address: selectedAddress,
+            paymentMode: paymentMode,
+            paymentStatus: paymentStatus,
+            paymentId: paymentId || null
+        };
+
+        if (finalStatus === 'completed' || finalStatus === 'success') {
+            // Payment successful - navigate to success modal
+            navigation.navigate('SuccessModal', {
+                orderDetails,
+                onDismiss: () => {
+                    // Navigate back to Home instead of resetting
+                    navigation.navigate('Home');
+                }
+            });
+        } else {
+            // Payment failed - navigate to failure modal
+            navigation.navigate('FailureModal', {
+                errorMessage: error || 'Payment was unsuccessful. Please try again.',
+                orderDetails: orderDetails,
+                onDismiss: () => {
+                    // Navigate back to MyCart instead of resetting
+                    navigation.navigate('MyCart');
+                }
+            });
+        }
     };
 
     const handlePaymentInitiation = async (orderId: string, totalAmount: number, email: string, contact: string) => {
@@ -220,8 +317,21 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
         try {
             setLoading(true);
 
-            // Prepare order data
-            const orderData = prepareOrderData(selectedPaymentMethod);
+            // Determine initial payment status and mode based on selected method
+            let paymentMode, paymentStatus, orderStatus;
+            
+            if (selectedPaymentMethod === 'cod') {
+                paymentMode = 'COD';
+                paymentStatus = 'PENDING';
+                orderStatus = 'CONFIRMED';
+            } else {
+                paymentMode = 'ONLINE';
+                paymentStatus = 'PENDING'; // Payment not completed yet
+                orderStatus = 'PENDING';
+            }
+            
+            // Prepare order data with correct payment mode and status
+            const orderData = prepareOrderData(paymentMode, paymentStatus);
             console.log('📦 Order Create Service:', JSON.stringify(orderData, null, 2));
 
             // Call the order service
@@ -232,51 +342,62 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
             if (response && response.orderId) {
                 // Handle different payment methods
                 if (selectedPaymentMethod === 'cod') {
-                    // For COD, show SuccessModal and then navigate to Home
-                    // navigation.navigate('SuccessModal', {
-                    //     orderDetails: {
-                    //         orderId: response.orderId,
-                    //         items: products,
-                    //         total: orderSummary?.grandTotal || 0,
-                    //         date: response.orderTime || new Date().toISOString(),
-                    //         status: 'Processing',
-                    //         address: selectedAddress,
-                    //         paymentMethod: 'Cash on Delivery'
-                    //     },
-                    //     onDismiss: () => {
-                    //         // Reset navigation stack and go to Home
-                    //         navigation.dispatch(
-                    //             CommonActions.reset({
-                    //                 index: 0,
-                    //                 routes: [{ name: 'Home' }],
-                    //             })
-                    //         );
-                    //     }
-                    // });
-                    // Instead of showing the SuccessModal, directly navigate to Home
-                   navigation.navigate('MyCart');
-                } else {
-                    // For online payments, initiate payment gateway
-                    const paymentResult = await handlePaymentInitiation(
-                        response.orderId,
-                        orderSummary?.grandTotal || 0,
-                        selectedAddress?.email || userEmail,
-                        selectedAddress?.phone || userContact
-                    );
+                    // For COD, show SuccessModal with COD payment status
+                    const orderDetails = {
+                        orderId: response.orderId,
+                        items: products,
+                        total: orderSummary?.grandTotal || 0,
+                        date: response.orderTime || new Date().toISOString(),
+                        status: orderStatus,
+                        address: selectedAddress,
+                        paymentMode: paymentMode,
+                        paymentStatus: paymentStatus
+                    };
+                    console.log('📦 Order Details for SuccessModal:', JSON.stringify(orderDetails, null, 2));
 
-                    // Navigate to payment screen with the redirect URL
-                    navigation.navigate('PaymentGateway', {
-                        paymentUrl: paymentResult.paymentRedirectUrl,
-                        orderDetails: {
-                            orderId: response.orderId,
-                            items: products,
-                            total: orderSummary?.grandTotal || 0,
-                            date: response.orderTime || new Date().toISOString(),
-                            status: 'Pending Payment',
-                            address: selectedAddress,
-                            paymentMethod: 'Online Payment'
+                    navigation.navigate('SuccessModal', {
+                        orderDetails,
+                        onDismiss: () => {
+                            // Navigate to Home instead of resetting
+                            navigation.navigate('Home');
                         }
                     });
+                } else {
+                    // For online payments, initiate payment gateway
+                    try {
+                        const paymentResult = await handlePaymentInitiation(
+                            response.orderId,
+                            orderSummary?.grandTotal || 0,
+                            selectedAddress?.email || userEmail,
+                            selectedAddress?.phone || userContact
+                        );
+
+                        // Navigate to payment screen with the redirect URL
+                        navigation.navigate('PaymentGateway', {
+                            paymentUrl: paymentResult.paymentRedirectUrl,
+                            orderDetails: {
+                                orderId: response.orderId,
+                                items: products,
+                                total: orderSummary?.grandTotal || 0,
+                                date: response.orderTime || new Date().toISOString(),
+                                status: orderStatus,
+                                address: selectedAddress,
+                                paymentMode: paymentMode,
+                                paymentStatus: paymentStatus
+                            }
+                        });
+                    } catch (paymentError) {
+                        console.error('❌ Payment initiation error:', paymentError);
+                        
+                        // If payment initiation fails, show failure modal
+                        navigation.navigate('FailureModal', {
+                            errorMessage: 'Failed to initiate payment. Please try again.',
+                            onDismiss: () => {
+                                // Navigate to MyCart instead of resetting
+                                navigation.navigate('MyCart');
+                            }
+                        });
+                    }
                 }
             } else {
                 // Handle case where response exists but no orderId
@@ -299,12 +420,8 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
             navigation.navigate('FailureModal', {
                 errorMessage,
                 onDismiss: () => {
-                    navigation.dispatch(
-                        CommonActions.reset({
-                            index: 0,
-                            routes: [{ name: 'Cart' }],
-                        })
-                    );
+                    // Navigate to MyCart instead of resetting
+                    navigation.navigate('MyCart');
                 }
             });
         } finally {

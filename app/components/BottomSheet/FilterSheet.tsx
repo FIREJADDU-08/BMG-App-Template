@@ -291,8 +291,8 @@ const FilterSheet2 = ({ sheetRef, onFiltersChange, initialFilters }: Props) => {
             <Button
               onPress={handleResetFilters}
               title="Reset"
-              text={colors.title}
-              color={colors.card}
+              text={COLORS.title}
+              color={COLORS.card}
               btnRounded
             />
           </View>

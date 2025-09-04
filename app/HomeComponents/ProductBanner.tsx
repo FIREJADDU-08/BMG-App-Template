@@ -1,13 +1,13 @@
 import React, { memo, useCallback, useState } from 'react';
-import { 
-  View, 
-  TouchableOpacity, 
-  Image, 
-  Platform, 
-  Text, 
+import {
+  View,
+  TouchableOpacity,
+  Image,
+  Platform,
+  Text,
   StyleSheet,
   useWindowDimensions,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { GlobalStyleSheet } from '../constants/StyleSheet';
@@ -25,15 +25,15 @@ type CategoryItem = {
 };
 
 const SliderData: CategoryItem[] = [
-  { id: '1', image: IMAGES.star3, title: "COUPLE RING" },
-  { id: '2', image: IMAGES.star3, title: "SHORT CHAINS" },
-  { id: '3', image: IMAGES.star3, title: "ANKLETS" },
-  { id: '4', image: IMAGES.star3, title: "EARINGS" },
-  { id: '5', image: IMAGES.star3, title: "BRACELETS" },
-  { id: '6', image: IMAGES.star3, title: "STUDS" },
-  { id: '7', image: IMAGES.star3, title: "BANGLES" },
-  { id: '8', image: IMAGES.star3, title: "PENDANTS" },
-  { id: '9', image: IMAGES.star3, title: "DAILY WEAR" },
+  { id: '1', image: IMAGES.star3, title: 'COUPLE RING' },
+  { id: '2', image: IMAGES.star3, title: 'SHORT CHAINS' },
+  { id: '3', image: IMAGES.star3, title: 'ANKLETS' },
+  { id: '4', image: IMAGES.star3, title: 'EARINGS' },
+  { id: '5', image: IMAGES.star3, title: 'BRACELETS' },
+  { id: '6', image: IMAGES.star3, title: 'STUDS' },
+  { id: '7', image: IMAGES.star3, title: 'BANGLES' },
+  { id: '8', image: IMAGES.star3, title: 'PENDANTS' },
+  { id: '9', image: IMAGES.star3, title: 'DAILY WEAR' },
 ];
 
 type BannerWithCategoriesProps = {
@@ -41,8 +41,7 @@ type BannerWithCategoriesProps = {
 };
 
 const BannerWithCategories = ({ navigation }: BannerWithCategoriesProps) => {
-  const theme = useTheme();
-  const { colors } = theme;
+  const { colors, dark } = useTheme();
   const { width } = useWindowDimensions();
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -51,9 +50,12 @@ const BannerWithCategories = ({ navigation }: BannerWithCategoriesProps) => {
     navigation.navigate('Products');
   }, [navigation]);
 
-  const handleCategoryNavigation = useCallback((categoryTitle: string) => {
-    navigation.navigate('Products', { subItemName: categoryTitle });
-  }, [navigation]);
+  const handleCategoryNavigation = useCallback(
+    (categoryTitle: string) => {
+      navigation.navigate('Products', { subItemName: categoryTitle });
+    },
+    [navigation]
+  );
 
   const handleImageLoad = useCallback(() => {
     setImageLoading(false);
@@ -65,38 +67,51 @@ const BannerWithCategories = ({ navigation }: BannerWithCategoriesProps) => {
     setImageError(true);
   }, []);
 
-  const renderCategoryItem = useCallback(({ item }: { item: CategoryItem }) => (
-    <TouchableOpacity
-      key={item.id}
-      onPress={() => handleCategoryNavigation(item.title)}
-      style={styles.categoryItem}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.categoryText, { color: colors.title }]}>
-        {item.title}
-      </Text>
-      <Image
-        style={[styles.categoryIcon, { tintColor: colors.title }]}
-        source={item.image}
-      />
-    </TouchableOpacity>
-  ), [colors, handleCategoryNavigation]);
+  const renderCategoryItem = useCallback(
+    ({ item }: { item: CategoryItem }) => (
+      <TouchableOpacity
+        key={item.id}
+        onPress={() => handleCategoryNavigation(item.title)}
+        style={[
+          styles.categoryItem,
+          {
+            backgroundColor: dark
+              ? COLORS.darkSecondary
+              : COLORS.lightBackground, // Theme-based background
+          },
+        ]}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.categoryText, { color: colors.text }]}>
+          {item.title}
+        </Text>
+        <Image
+          style={[styles.categoryIcon, { tintColor: colors.text }]}
+          source={item.image}
+        />
+      </TouchableOpacity>
+    ),
+    [colors, dark, handleCategoryNavigation]
+  );
 
   return (
     <View style={styles.container}>
       <View style={[GlobalStyleSheet.container, styles.innerContainer]}>
-        <TouchableOpacity 
-          onPress={handleProductNavigation} 
+        <TouchableOpacity
+          onPress={handleProductNavigation}
           style={styles.borderTouchable}
           activeOpacity={0.8}
         >
           <Image
-            style={[styles.borderImage, theme.dark && { tintColor: colors.background }]}
+            style={[
+              styles.borderImage,
+              dark && { tintColor: colors.background },
+            ]}
             source={IMAGES.border}
           />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleProductNavigation}
           style={styles.mainImageTouchable}
           activeOpacity={0.9}
@@ -110,7 +125,7 @@ const BannerWithCategories = ({ navigation }: BannerWithCategoriesProps) => {
             style={[
               styles.mainImage,
               Platform.OS === 'ios' && styles.iosImageAdjustment,
-              imageError && styles.hiddenImage
+              imageError && styles.hiddenImage,
             ]}
             source={imageError ? IMAGES.placeholder : IMAGES.product5}
             onLoad={handleImageLoad}
@@ -119,11 +134,18 @@ const BannerWithCategories = ({ navigation }: BannerWithCategoriesProps) => {
         </TouchableOpacity>
 
         <View style={styles.svgContainer}>
-          <View style={[styles.svgBackground, { 
-            backgroundColor: theme.dark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' 
-          }]}>
-            <TouchableOpacity 
-              onPress={handleProductNavigation} 
+          <View
+            style={[
+              styles.svgBackground,
+              {
+                backgroundColor: dark
+                  ? 'rgba(0,0,0,0.7)'
+                  : 'rgba(255,255,255,0.7)',
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={handleProductNavigation}
               style={styles.svgTouchable}
               activeOpacity={0.8}
             >
@@ -132,34 +154,18 @@ const BannerWithCategories = ({ navigation }: BannerWithCategoriesProps) => {
           </View>
         </View>
 
-        {Platform.OS === 'android' && (
-          <View style={[styles.categoriesContainer, { backgroundColor: colors.card }]}>
-            <Scrolling 
-              endPaddingWidth={'50'} 
-              style={styles.scrollingWrapper}
-              showsHorizontalScrollIndicator={false}
-            >
-              <View style={styles.categoriesList}>
-                {SliderData.map((item) => renderCategoryItem({ item }))}
-              </View>
-            </Scrolling>
-          </View>
-        )}
-
-        {/* iOS version can be added here if needed */}
-        {Platform.OS === 'ios' && (
-          <View style={[styles.categoriesContainer, { backgroundColor: colors.card }]}>
-            <Scrolling 
-              endPaddingWidth={'50'} 
-              style={styles.scrollingWrapper}
-              showsHorizontalScrollIndicator={false}
-            >
-              <View style={styles.categoriesList}>
-                {SliderData.map((item) => renderCategoryItem({ item }))}
-              </View>
-            </Scrolling>
-          </View>
-        )}
+        {/* Categories List */}
+        <View style={[styles.categoriesContainer, { backgroundColor: colors.card }]}>
+          <Scrolling
+            endPaddingWidth={'50'}
+            style={styles.scrollingWrapper}
+            showsHorizontalScrollIndicator={false}
+          >
+            <View style={styles.categoriesList}>
+              {SliderData.map((item) => renderCategoryItem({ item }))}
+            </View>
+          </Scrolling>
+        </View>
       </View>
     </View>
   );
@@ -248,7 +254,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   categoryText: {
     fontSize: 14,

@@ -449,7 +449,7 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
   // Enhanced memoized values
   const headerStyle = useMemo(() => ({
     backgroundColor: colors.background,
-    paddingHorizontal: 15,
+    paddingHorizontal: SIZES.padding,
     shadowColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -459,14 +459,14 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   const searchBarStyle = useMemo(() => ({
     ...FONTS.fontRegular,
-    fontSize: 16,
+    fontSize: SIZES.fontLg,
     height: 52,
     backgroundColor: colors.card,
-    borderRadius: 15,
-    paddingLeft: 20,
+    borderRadius: SIZES.radius_lg,
+    paddingLeft: SIZES.padding + 5,
     paddingRight: 50, // Space for search icon
     color: colors.title,
-    shadowColor: Platform.OS === 'ios' ? 'rgba(195, 123, 95, 0.25)' : 'rgba(0,0,0,0.3)',
+    shadowColor: Platform.OS === 'ios' ? COLORS.primaryLight : 'rgba(0,0,0,0.3)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -917,40 +917,40 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
         </LazyWrapper> 
 
         {/* Optional components that can be toggled */}
-        <LazyWrapper name="People Also Viewed">
+         {/* <LazyWrapper name="People Also Viewed">
           <PeopleAlsoViewed navigation={navigation} />
         </LazyWrapper>
 
         <LazyWrapper name="Great Savings">
           <GreatSavingsSection navigation={navigation} />
-        </LazyWrapper>
+        </LazyWrapper>  */}
 
         {/* Add scroll to top button */}
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           style={[styles.scrollToTopButton, { backgroundColor: colors.primary }]}
           onPress={scrollToTop}
           accessible={true}
           accessibilityLabel="Scroll to top"
           accessibilityRole="button"
         >
-          <Feather name="arrow-up" size={20} color="white" />
-        </TouchableOpacity>
+          <Feather name="arrow-up" size={20} color="black" />
+        </TouchableOpacity> */}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// Enhanced styles with better responsive design
+// Enhanced styles with better responsive design and util integration
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // More space for better UX
+    paddingBottom: SIZES.padding * 7, // More space for better UX
   },
   mainContainer: {
-    marginHorizontal: 5,
-    marginVertical: 5,
+    marginHorizontal: SIZES.margin / 3,
+    marginVertical: SIZES.margin / 3,
     marginBottom: 0,
     paddingBottom: 0,
   },
@@ -959,74 +959,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     height: 70, // Slightly taller for better touch targets
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: SIZES.padding - 5,
+    paddingVertical: SIZES.padding - 5,
   },
   userSection: {
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 12,
-    paddingRight: 15,
+    gap: SIZES.fontSm - 1,
+    paddingRight: SIZES.padding,
     flex: 1,
   },
   profileImage: {
-    height: 48,
-    width: 48,
-    borderRadius: 16,
+    height: SIZES.h3 * 2,
+    width: SIZES.h3 * 2,
+    borderRadius: SIZES.radius_lg + 1,
     borderWidth: 2,
-    borderColor: COLORS.primary + '20',
+    borderColor: COLORS.primaryLight,
   },
   greetingContainer: {
     flex: 1,
   },
   greetingText: {
     ...FONTS.Marcellus,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: SIZES.font,
+    lineHeight: SIZES.font + 4,
   },
   usernameText: {
-    fontSize: 18,
-    fontWeight: '600',
-    lineHeight: 22,
+    ...FONTS.fontSemiBold,
+    fontSize: SIZES.h5,
+    lineHeight: SIZES.h5 + 4,
   },
   notificationButton: {
-    height: 48,
-    width: 48,
-    borderRadius: 16,
+    height: SIZES.h3 * 2,
+    width: SIZES.h3 * 2,
+    borderRadius: SIZES.radius_lg + 1,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: 'rgba(195, 123, 95, 0.20)',
+    shadowColor: COLORS.primaryLight,
     shadowOffset: { width: 2, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowRadius: SIZES.radius_lg - 7,
     elevation: 5,
   },
   bellIcon: {
-    width: 22,
-    height: 22,
+    width: SIZES.h6 + 6,
+    height: SIZES.h6 + 6,
   },
   searchContainer: {
-    marginTop: 20,
+    marginTop: SIZES.margin + 5,
     position: 'relative',
-    marginHorizontal: 5,
+    marginHorizontal: SIZES.margin / 3,
   },
   searchIcon: {
     position: 'absolute',
-    right: 15,
-    top: 16,
+    right: SIZES.padding,
+    top: SIZES.fontLg,
     padding: 5, // Better touch target
   },
   searchImage: {
-    height: 20,
-    width: 20,
+    height: SIZES.h6 + 4,
+    width: SIZES.h6 + 4,
     tintColor: COLORS.primary,
   },
   shadowBox: {
-    height: 50,
+    height: SIZES.h3 * 2 + 2,
     opacity: 0.6,
-    borderRadius: 10,
-    marginHorizontal: 20,
+    borderRadius: SIZES.radius,
+    marginHorizontal: SIZES.margin + 5,
     marginTop: -40,
     zIndex: -1,
   },
@@ -1034,131 +1034,131 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: SIZES.padding + 5,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: COLORS.primary,
+    marginTop: SIZES.margin - 3,
     ...FONTS.fontMedium,
+    fontSize: SIZES.fontLg,
+    color: COLORS.primary,
   },
   skeletonContainer: {
-    padding: 20,
-    gap: 15,
+    padding: SIZES.padding + 5,
+    gap: SIZES.margin,
   },
   skeletonHeader: {
-    height: 60,
-    borderRadius: 10,
+    height: SIZES.h2 * 2 + 4,
+    borderRadius: SIZES.radius_lg - 5,
   },
   skeletonContent: {
-    height: 200,
-    borderRadius: 10,
+    height: SIZES.height * 0.25,
+    borderRadius: SIZES.radius_lg - 5,
   },
   skeletonFooter: {
-    height: 40,
-    borderRadius: 10,
+    height: SIZES.h1,
+    borderRadius: SIZES.radius_lg - 5,
   },
   skeletonShimmer: {
-    backgroundColor: '#E1E9EE',
+    backgroundColor: COLORS.light,
     opacity: 0.7,
   },
   errorContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    margin: 15,
-    backgroundColor: '#FFF5F5',
-    borderRadius: 12,
+    padding: SIZES.padding + 5,
+    margin: SIZES.margin,
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius_sm + 4,
     borderWidth: 1,
-    borderColor: '#FED7D7',
-    minHeight: 120,
+    borderColor: COLORS.borderColor,
+    minHeight: SIZES.height * 0.15,
   },
   errorIcon: {
-    fontSize: 32,
-    marginBottom: 10,
+    fontSize: SIZES.h2 + 4,
+    marginBottom: SIZES.margin - 5,
   },
   errorText: {
-    fontSize: 16,
-    color: '#E53E3E',
-    textAlign: 'center',
-    marginBottom: 15,
     ...FONTS.fontMedium,
-    lineHeight: 22,
+    fontSize: SIZES.fontLg,
+    color: COLORS.danger,
+    textAlign: 'center',
+    marginBottom: SIZES.margin,
+    lineHeight: SIZES.fontLg + 6,
   },
   retryButton: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 100,
+    paddingHorizontal: SIZES.padding + 9,
+    paddingVertical: SIZES.padding - 3,
+    borderRadius: SIZES.radius_sm,
+    minWidth: SIZES.width * 0.25,
   },
   retryButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
+    color: COLORS.white,
+    fontSize: SIZES.font,
+    ...FONTS.fontSemiBold,
     textAlign: 'center',
   },
   errorBoundaryContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFF8F8',
+    padding: SIZES.padding + 5,
+    backgroundColor: COLORS.white,
   },
   errorBoundaryText: {
-    fontSize: 18,
-    color: '#E53E3E',
-    textAlign: 'center',
-    marginBottom: 20,
     ...FONTS.fontSemiBold,
+    fontSize: SIZES.h5,
+    color: COLORS.danger,
+    textAlign: 'center',
+    marginBottom: SIZES.margin + 5,
   },
   errorBoundaryButton: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 10,
+    paddingHorizontal: SIZES.padding * 2,
+    paddingVertical: SIZES.padding,
+    borderRadius: SIZES.radius_lg - 5,
   },
   errorBoundaryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: COLORS.white,
+    fontSize: SIZES.fontLg,
+    ...FONTS.fontSemiBold,
   },
   offlineIndicator: {
-    backgroundColor: '#FF6B6B',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+    backgroundColor: COLORS.danger,
+    paddingVertical: SIZES.padding - 7,
+    paddingHorizontal: SIZES.padding,
     alignItems: 'center',
   },
   offlineText: {
-    color: 'white',
-    fontSize: 12,
+    color: COLORS.white,
+    fontSize: SIZES.fontSm - 1,
     ...FONTS.fontMedium,
   },
   scrollToTopButton: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    bottom: SIZES.margin + 5,
+    right: SIZES.margin + 5,
+    width: SIZES.h3 * 2 + 2,
+    height: SIZES.h3 * 2 + 2,
+    borderRadius: (SIZES.h3 * 2 + 2) / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: SIZES.radius_sm - 4,
     elevation: 5,
   },
   // Responsive styles
   ...Platform.select({
     ios: {
       headerIOS: {
-        paddingTop: 10,
+        paddingTop: SIZES.padding - 5,
       },
     },
     android: {
       headerAndroid: {
-        paddingTop: 5,
+        paddingTop: SIZES.padding - 10,
       },
     },
   }),

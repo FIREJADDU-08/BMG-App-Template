@@ -41,76 +41,45 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Enhanced image path processing function
-  const processImagePath = useCallback(
-    (imagePath: any): string => {
-      const fallbackImage = IMAGES.item13;
+  // Enhanced image path processing
+  const processImagePath = useCallback((imagePath: any): string => {
+    const fallbackImage = IMAGES.item13;
 
-      if (!imagePath) return fallbackImage;
+    if (!imagePath) return fallbackImage;
 
-      try {
-        let imageUrl = '';
+    try {
+      let imageUrl = '';
 
-        // Case 1: Direct string path (like "/uploads/app_banners/...")
-        if (typeof imagePath === 'string' && imagePath.startsWith('/') && !imagePath.startsWith('[')) {
-          imageUrl = imagePath;
-        }
-        // Case 2: JSON string array (like "[\"/uploads/product_images/...\", ...]")
-        else if (typeof imagePath === 'string' && imagePath.startsWith('[')) {
-          try {
-            const parsedImages = JSON.parse(imagePath);
-            if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-              imageUrl = parsedImages[0];
-            }
-          } catch (parseError) {
-            console.warn('Failed to parse image JSON:', parseError);
-            // Try to extract the first image using regex
-            const match = imagePath.match(/"([^"]+)"/);
-            imageUrl = match ? match[1] : imagePath;
+      if (typeof imagePath === 'string' && imagePath.startsWith('/') && !imagePath.startsWith('[')) {
+        imageUrl = imagePath;
+      } else if (typeof imagePath === 'string' && imagePath.startsWith('[')) {
+        try {
+          const parsedImages = JSON.parse(imagePath);
+          if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+            imageUrl = parsedImages[0];
           }
+        } catch {
+          const match = imagePath.match(/"([^"]+)"/);
+          imageUrl = match ? match[1] : imagePath;
         }
-        // Case 3: Already an array
-        else if (Array.isArray(imagePath) && imagePath.length > 0) {
-          imageUrl = imagePath[0];
-        }
-        // Case 4: Object with image property
-        else if (typeof imagePath === 'object' && imagePath !== null) {
-          if (imagePath.url) imageUrl = imagePath.url;
-          else if (imagePath.path) imageUrl = imagePath.path;
-          else if (imagePath.image) imageUrl = imagePath.image;
-        }
-        // Case 5: Other string formats
-        else if (typeof imagePath === 'string') {
-          imageUrl = imagePath;
-        }
-
-        // Clean up the image URL
-        if (imageUrl && typeof imageUrl === 'string') {
-          // Remove any quotes or brackets
-          imageUrl = imageUrl.replace(/["'[\]]/g, '').trim();
-          
-          // If empty after cleaning, return fallback
-          if (!imageUrl) return fallbackImage;
-
-          // Format the URL properly
-          if (imageUrl.startsWith('http')) {
-            return imageUrl;
-          } else if (imageUrl.startsWith('/')) {
-            return `https://app.bmgjewellers.com${imageUrl}`;
-          } else {
-            // Handle cases where the path might not start with /
-            return `https://app.bmgjewellers.com/${imageUrl.replace(/^\/+/, '')}`;
-          }
-        }
-
-        return fallbackImage;
-      } catch (error) {
-        console.warn('Error processing image path:', error);
-        return fallbackImage;
+      } else if (Array.isArray(imagePath) && imagePath.length > 0) {
+        imageUrl = imagePath[0];
+      } else if (typeof imagePath === 'object' && imagePath !== null) {
+        imageUrl = imagePath.url || imagePath.path || imagePath.image || '';
+      } else if (typeof imagePath === 'string') {
+        imageUrl = imagePath;
       }
-    },
-    [],
-  );
+
+      if (!imageUrl) return fallbackImage;
+      imageUrl = imageUrl.replace(/["'[\]]/g, '').trim();
+
+      if (imageUrl.startsWith('http')) return imageUrl;
+      if (imageUrl.startsWith('/')) return `https://app.bmgjewellers.com${imageUrl}`;
+      return `https://app.bmgjewellers.com/${imageUrl.replace(/^\/+/, '')}`;
+    } catch {
+      return fallbackImage;
+    }
+  }, []);
 
   // Process products
   const processProducts = useCallback(
@@ -118,21 +87,12 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
       if (!Array.isArray(rawProducts)) return [];
 
       return rawProducts.map((product, index) => {
-        const imageSource =
-          product.ImagePath || product.image || product.image_url || product.img;
+        const imageSource = product.ImagePath || product.image || product.image_url || product.img;
         const processedImage = processImagePath(imageSource);
 
         return {
-          id:
-            product.SNO ||
-            product.TAGKEY ||
-            product.id ||
-            `product-${index}`,
-          title:
-            product.SUBITEMNAME ||
-            product.ITEMNAME ||
-            product.title ||
-            'Product',
+          id: product.SNO || product.TAGKEY || product.id || `product-${index}`,
+          title: product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product',
           price: product.GrandTotal || product.RATE || product.price || 0,
           discount: product.discount || 0,
           image: processedImage,
@@ -148,21 +108,14 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching recently viewed products...');
       const data = await getRecentlyViewedProducts();
-      console.log('Received data:', data);
-
-      if (data && Array.isArray(data)) {
-        console.log('Processing products, count:', data.length);
+      if (Array.isArray(data)) {
         const processedProducts = processProducts(data);
-        console.log('Processed products:', processedProducts);
         setProducts(processedProducts);
       } else {
-        console.log('No data or invalid format');
         setProducts([]);
       }
-    } catch (error) {
-      console.log('Error fetching recently viewed:', error);
+    } catch {
       setError('Failed to load recently viewed products. Please try again.');
       setProducts([]);
     } finally {
@@ -191,10 +144,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
   const getWorkingImage = useCallback(
     (product: Product): string => {
-      if (failedImages.has(product.image)) {
-        return IMAGES.item13;
-      }
-      return product.image || IMAGES.item13;
+      return failedImages.has(product.image) ? IMAGES.item13 : product.image || IMAGES.item13;
     },
     [failedImages],
   );
@@ -204,10 +154,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
       const workingImage = getWorkingImage(product);
 
       return (
-        <View
-          style={styles.productContainer}
-          key={`recent-${product.id}-${index}`}
-          testID={`product-item-${index}`}>
+        <View style={styles.productContainer} key={`recent-${product.id}-${index}`}>
           <CardStyle1
             id={product.id}
             image={workingImage}
@@ -233,11 +180,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator
-          size="small"
-          color={COLORS.primary}
-          testID="loading-indicator"
-        />
+        <ActivityIndicator size="small" color={COLORS.primary} />
       </View>
     );
   }
@@ -247,9 +190,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
       <View style={styles.errorContainer}>
         <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
         <TouchableOpacity onPress={handleRefresh} style={styles.retryButton}>
-          <Text style={[styles.retryText, { color: COLORS.primary }]}>
-            Retry
-          </Text>
+          <Text style={[styles.retryText, { color: COLORS.primary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -262,9 +203,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
           No recently shortlisted products found.
         </Text>
         <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-          <Text style={[styles.refreshText, { color: COLORS.primary }]}>
-            Refresh
-          </Text>
+          <Text style={[styles.refreshText, { color: COLORS.primary }]}>Refresh</Text>
         </TouchableOpacity>
       </View>
     );
@@ -276,18 +215,13 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
         GlobalStyleSheet.container,
         styles.container,
         { backgroundColor: colors.background },
-      ]}
-      testID="recently-shortlisted-section">
+      ]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.title }]}>{title}</Text>
         {showSeeAll && products.length > 0 && (
-          <TouchableOpacity
-            onPress={handleSeeAllPress}
-            testID="see-all-button">
-            <Text style={[styles.seeAllText, { color: colors.title }]}>
-              See All
-            </Text>
+          <TouchableOpacity onPress={handleSeeAllPress}>
+            <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -297,14 +231,8 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            products.length === 0 && styles.scrollContentEmpty,
-          ]}
-          testID="products-scrollview">
-          <View style={styles.productsRow}>
-            {products.map(renderProductItem)}
-          </View>
+          contentContainerStyle={styles.scrollContent}>
+          <View style={styles.productsRow}>{products.map(renderProductItem)}</View>
         </ScrollView>
       </View>
     </View>
@@ -313,81 +241,75 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 0,
-    paddingBottom: 0,
+    paddingVertical: SIZES.paddingSmall,
   },
   loadingContainer: {
-    padding: 20,
+    padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
   },
   errorContainer: {
-    padding: 20,
+    padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
   },
   errorText: {
     ...FONTS.fontRegular,
-    fontSize: 14,
-    marginBottom: 10,
+    fontSize: SIZES.font,
+    marginBottom: SIZES.marginSmall,
     textAlign: 'center',
   },
   retryButton: {
-    padding: 8,
+    padding: SIZES.paddingSmall,
   },
   retryText: {
     ...FONTS.fontMedium,
-    fontSize: 14,
+    fontSize: SIZES.font,
   },
   emptyContainer: {
-    padding: 20,
+    padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyText: {
     ...FONTS.fontRegular,
-    fontSize: 14,
+    fontSize: SIZES.font,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: SIZES.marginSmall,
   },
   refreshButton: {
-    padding: 8,
+    padding: SIZES.paddingSmall,
   },
   refreshText: {
     ...FONTS.fontMedium,
-    fontSize: 14,
+    fontSize: SIZES.font,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    marginBottom: 15,
+    paddingHorizontal: SIZES.padding,
+    marginBottom: SIZES.margin,
   },
   title: {
     ...FONTS.Marcellus,
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: SIZES.largeTitle,
+    lineHeight: SIZES.largeLineHeight,
   },
   seeAllText: {
     ...FONTS.fontRegular,
-    fontSize: 13,
+    fontSize: SIZES.small,
   },
   scrollContainer: {
-    marginHorizontal: -15,
+    marginHorizontal: -SIZES.padding,
   },
   scrollContent: {
-    paddingHorizontal: 15,
-  },
-  scrollContentEmpty: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: SIZES.padding,
   },
   productsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
+    gap: SIZES.margin,
   },
   productContainer: {
     width: CARD_WIDTH,

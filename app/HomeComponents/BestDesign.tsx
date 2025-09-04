@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,18 +6,21 @@ import {
   StyleSheet,
   ImageSourcePropType,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { GlobalStyleSheet } from "../constants/StyleSheet";
-import { FONTS, COLORS } from "../constants/theme";
+import { COLORS, FONTS, SIZES, ICONS } from "../constants/theme";
 import CardStyle1 from "../components/Card/CardStyle1";
 import Button from "../components/Button/Button";
 import { StackScreenProps } from "@react-navigation/stack";
 import { RootStackParamList } from "../../Navigations/RootStackParamList";
 import { fetchBestDesignProducts } from "../Services/BestDesignService";
 import { IMAGES } from "../constants/Images";
+import SvgUri from "react-native-svg";
 
-const { width } = Dimensions.get("window");
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type BestDesignsPageProps = StackScreenProps<
   RootStackParamList,
@@ -26,7 +29,6 @@ type BestDesignsPageProps = StackScreenProps<
 
 const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
   const { colors } = useTheme();
-
   const [bestDesignProducts, setBestDesignProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,6 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
       const validProducts = products.filter((p) => p.mainImage && p.GrossAmount);
       setBestDesignProducts(validProducts);
 
-      // ✅ Only console here: show fetched count
       console.log(`✅ Best Designs fetched: ${validProducts.length} items`);
     } catch (err) {
       console.error("❌ Error loading best design products:", err);
@@ -56,32 +57,128 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
 
   const fallbackImage: ImageSourcePropType = IMAGES.item11;
 
+  // Memoized styles for performance
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        header: {
+          marginBottom: SIZES.margin + 5,
+          paddingHorizontal: SIZES.padding,
+        },
+        loadingContainer: {
+          height: SIZES.height * 0.4,
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        errorContainer: {
+          padding: SIZES.padding + 5,
+          alignItems: "center",
+          backgroundColor: colors.card,
+          borderRadius: SIZES.radius_sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+          minHeight: SIZES.height * 0.2,
+          margin: SIZES.margin,
+        },
+        errorText: {
+          ...FONTS.fontMedium,
+          fontSize: SIZES.fontLg,
+          color: COLORS.danger,
+          textAlign: "center",
+          marginBottom: SIZES.margin,
+        },
+        emptyContainer: {
+          padding: SIZES.padding + 5,
+          alignItems: "center",
+          backgroundColor: colors.card,
+          borderRadius: SIZES.radius_sm,
+          margin: SIZES.margin,
+        },
+        gridContainer: {
+          flexDirection: "column",
+          paddingHorizontal: SIZES.padding - 5,
+        },
+        row: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          marginBottom: SIZES.margin,
+        },
+        cardWrapper: {
+          width: (SIZES.width - SIZES.padding * 2 - 10) / 2, // Responsive width
+          marginBottom: SIZES.margin,
+        },
+      }),
+    [colors.card, colors.border]
+  );
+
+  // Enhanced Loading Component
+  const LoadingIndicator = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+      <Text
+        style={{
+          ...FONTS.fontMedium,
+          fontSize: SIZES.fontLg,
+          color: colors.text,
+          marginTop: SIZES.margin - 3,
+        }}
+        accessibilityLiveRegion="polite"
+      >
+        Loading best designs...
+      </Text>
+    </View>
+  );
+
+  // Enhanced Error Component
+  const ErrorComponent = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+    <View style={styles.errorContainer}>
+      <Text style={{ fontSize: SIZES.h2, marginBottom: SIZES.margin - 5 }}>
+        ⚠️
+      </Text>
+      <Text
+        style={styles.errorText}
+        accessibilityRole="alert"
+      >
+        {message}
+      </Text>
+      <Button
+        title="Try Again"
+        onPress={onRetry}
+        color={COLORS.primary}
+        btnRounded
+        style={{
+          marginTop: SIZES.margin,
+          width: SIZES.width * 0.4,
+          borderRadius: SIZES.radius_sm,
+        }}
+        textStyle={{ ...FONTS.fontSemiBold, fontSize: SIZES.font }}
+        accessibilityLabel="Retry loading best designs"
+      />
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[GlobalStyleSheet.container, { paddingVertical: 20 }]}>
+      <View
+        style={[
+          GlobalStyleSheet.container,
+          { paddingVertical: SIZES.padding + 5 },
+        ]}
+      >
         <View style={styles.header}>
-          <Text style={{ ...FONTS.Marcellus, fontSize: 24, color: colors.title }}>
+          <Text
+            style={{ ...FONTS.Marcellus, fontSize: SIZES.h3, color: colors.title }}
+            accessibilityRole="header"
+          >
             Best Designs
           </Text>
         </View>
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
+          <LoadingIndicator />
         ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={{ ...FONTS.fontRegular, color: colors.text }}>
-              {error}
-            </Text>
-            <Button
-              title="Try Again"
-              onPress={loadBestDesignProducts}
-              color={COLORS.primary}
-              btnRounded
-              style={{ marginTop: 15, width: 150 }}
-            />
-          </View>
+          <ErrorComponent message={error} onRetry={loadBestDesignProducts} />
         ) : bestDesignProducts.length > 0 ? (
           <View style={styles.gridContainer}>
             {Array.from({ length: Math.ceil(bestDesignProducts.length / 4) }).map(
@@ -113,9 +210,16 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
                                 sno: product.SNO,
                               })
                             }
-                            onPress1={() => {}} // Removed console log
-                            onPress2={() => {}} // Removed console log
-                            closebtn
+                            onPress1={() => {}} // Wishlist action placeholder
+                            onPress2={() => {}} // Cart action placeholder
+                            closebtn={
+                              <SvgUri
+                                width={SIZES.h6 + 4}
+                                height={SIZES.h6 + 4}
+                                source={{ uri: ICONS.closeOpen }}
+                                fill={COLORS.danger}
+                              />
+                            }
                           />
                         </View>
                       );
@@ -126,7 +230,14 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
           </View>
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={{ ...FONTS.fontRegular, color: colors.text }}>
+            <Text
+              style={{
+                ...FONTS.fontRegular,
+                fontSize: SIZES.fontLg,
+                color: colors.textLight,
+              }}
+              accessibilityRole="alert"
+            >
               No best design products available
             </Text>
           </View>
@@ -136,37 +247,9 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
   );
 };
 
-const styles = StyleSheet.create({
-  header: {
-    marginBottom: 20,
-    paddingHorizontal: 15,
-  },
-  loadingContainer: {
-    height: 300,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorContainer: {
-    padding: 20,
-    alignItems: "center",
-  },
-  emptyContainer: {
-    padding: 20,
-    alignItems: "center",
-  },
-  gridContainer: {
-    flexDirection: "column",
-  },
-  row: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  cardWrapper: {
-    width: "48%",
-    marginBottom: 15,
-  },
-});
+// Performance optimization with React.memo
+const arePropsEqual = (prevProps: BestDesignsPageProps, nextProps: BestDesignsPageProps) => {
+  return prevProps.route.key === nextProps.route.key;
+};
 
-export default BestDesignsPage;
+export default React.memo(BestDesignsPage, arePropsEqual);

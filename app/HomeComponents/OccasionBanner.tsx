@@ -11,7 +11,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
 import { getOccasionBanners } from "../Services/OccasionService";
-import { FONTS } from "../constants/theme";
+import { FONTS, COLORS } from "../constants/theme";
 
 const { width } = Dimensions.get("window");
 const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
@@ -37,24 +37,21 @@ export default function BannerSlider() {
         fetchBanners();
     }, []);
 
-// In BannerSlider's handlePress
-const handlePress = (item: any) => {
-    if (item.occasion && item.gender) {
-        const params = {
-            occasion: item.occasion,
-            gender: item.gender,
-           
-        };
-        
-        console.log("Navigating to Products with:", params);
-        navigation.navigate("Products", params);
-    }
-};
+    const handlePress = (item: any) => {
+        if (item.occasion && item.gender) {
+            const params = {
+                occasion: item.occasion,
+                gender: item.gender,
+            };
+            console.log("Navigating to Products with:", params);
+            navigation.navigate("Products", params);
+        }
+    };
 
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#D4AF37" />
+                <ActivityIndicator size="large" color={COLORS.primary} />
                 <Text style={styles.loadingText}>Loading occasions...</Text>
             </View>
         );
@@ -78,7 +75,7 @@ const handlePress = (item: any) => {
                 </Text>
             </View>
 
-            {/* Enhanced Carousel */}
+            {/* Carousel */}
             <Carousel
                 width={width - 32}
                 height={width * 0.55}
@@ -105,20 +102,14 @@ const handlePress = (item: any) => {
                             }
                         ]}
                     >
-                        {/* Main Image */}
                         <Image
                             source={{ uri: IMAGE_BASE_URL + item.image_path }}
                             style={styles.bannerImage}
                             defaultSource={require("../assets/images/item/pic14.png")}
                             resizeMode="cover"
                         />
-
-                        {/* Gradient Overlay */}
                         <View style={styles.gradientOverlay} />
-
-                        {/* Content Container */}
                         <View style={styles.contentContainer}>
-                            {/* Title and Subtitle */}
                             <View style={styles.textContainer}>
                                 <Text style={styles.titleText} numberOfLines={2}>
                                     {item.title || "Exquisite Jewelry Collection"}
@@ -130,8 +121,6 @@ const handlePress = (item: any) => {
                                 )}
                             </View>
                         </View>
-
-                        {/* Corner Decoration */}
                         <View style={styles.cornerDecoration} />
                     </TouchableOpacity>
                 )}
@@ -145,7 +134,10 @@ const handlePress = (item: any) => {
                         style={[
                             styles.paginationDot,
                             {
-                                backgroundColor: index === currentIndex ? "#D4AF37" : "rgba(212, 175, 55, 0.3)",
+                                backgroundColor:
+                                    index === currentIndex
+                                        ? COLORS.primary
+                                        : COLORS.primaryLight,
                                 width: index === currentIndex ? 24 : 8,
                             }
                         ]}
@@ -169,14 +161,14 @@ const styles = StyleSheet.create({
         ...FONTS.Marcellus,
         fontSize: 26,
         fontWeight: "600",
-        color: "#000000ff",
+        color: COLORS.text,
         textAlign: "center",
         marginBottom: 4,
     },
     sectionSubtitle: {
         ...FONTS.fontRegular,
         fontSize: 14,
-        color: "#666",
+        color: COLORS.textLight,
         textAlign: "center",
         fontStyle: "italic",
     },
@@ -187,38 +179,38 @@ const styles = StyleSheet.create({
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f9f9f9",
+        backgroundColor: COLORS.backgroundLight,
         marginHorizontal: 16,
         borderRadius: 12,
     },
     loadingText: {
         ...FONTS.fontRegular,
         fontSize: 14,
-        color: "#666",
+        color: COLORS.textLight,
         marginTop: 8,
     },
     placeholderContainer: {
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f5f5f5",
+        backgroundColor: COLORS.backgroundLight,
         borderRadius: 12,
         marginHorizontal: 16,
         borderWidth: 1,
-        borderColor: "#e0e0e0",
+        borderColor: COLORS.border,
         borderStyle: "dashed",
     },
     placeholderText: {
         ...FONTS.fontRegular,
         fontSize: 16,
-        color: "#999",
+        color: COLORS.textMuted,
     },
     slideContainer: {
         position: "relative",
         borderRadius: 12,
         overflow: "hidden",
         marginHorizontal: 4,
-        shadowColor: "#000",
+        shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -229,17 +221,6 @@ const styles = StyleSheet.create({
         height: "100%",
         borderRadius: 12,
     },
-    //   gradientOverlay: {
-    //     position: "absolute",
-    //     bottom: 0,
-    //     left: 0,
-    //     right: 0,
-    //     height: "60%",
-    //     backgroundColor: "transparent",
-    //     background: "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.7) 100%)",
-    //     // For React Native, we'll use a semi-transparent overlay
-    //     backgroundColor: "rgba(0, 0, 0, 0.4)",
-    //   },
     contentContainer: {
         position: "absolute",
         left: 0,
@@ -247,72 +228,29 @@ const styles = StyleSheet.create({
         bottom: 0,
         padding: 16,
     },
-    occasionBadge: {
-        alignSelf: "flex-start",
-        backgroundColor: "rgba(212, 175, 55, 0.9)",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    occasionBadgeText: {
-        ...FONTS.fontRegular,
-        fontSize: 10,
-        fontWeight: "700",
-        color: "#000",
-        letterSpacing: 1,
-    },
     textContainer: {
         maxWidth: "75%",
     },
     titleText: {
         ...FONTS.Marcellus,
-        color: "#080808ff",
+        color: COLORS.white,
         fontSize: 24,
         lineHeight: 28,
         fontWeight: "600",
         marginBottom: 6,
-        textShadowColor: "rgba(0,0,0,0.8)",
+        textShadowColor: COLORS.shadowDark,
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 3,
     },
     subtitleText: {
         ...FONTS.fontRegular,
-        color: "rgba(49, 46, 46, 0.9)",
+        color: COLORS.textLight,
         fontSize: 14,
         lineHeight: 18,
         marginBottom: 72,
-        textShadowColor: "rgba(0,0,0,0.6)",
+        textShadowColor: COLORS.shadow,
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
-    },
-    ctaContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "rgba(255, 255, 255, 0.15)",
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.3)",
-        alignSelf: "flex-start",
-    },
-    ctaText: {
-        ...FONTS.fontRegular,
-        color: "#FFFFFF",
-        fontSize: 12,
-        fontWeight: "600",
-        marginRight: 4,
-    },
-    ctaArrow: {
-        color: "#D4AF37",
-        fontSize: 14,
-        fontWeight: "bold",
     },
     cornerDecoration: {
         position: "absolute",
@@ -322,7 +260,7 @@ const styles = StyleSheet.create({
         height: 24,
         borderTopWidth: 3,
         borderRightWidth: 3,
-        borderColor: "#D4AF37",
+        borderColor: COLORS.primary,
         borderTopRightRadius: 8,
     },
     paginationContainer: {
@@ -336,6 +274,5 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         marginHorizontal: 3,
-        backgroundColor: "rgba(212, 175, 55, 0.3)",
     },
 });

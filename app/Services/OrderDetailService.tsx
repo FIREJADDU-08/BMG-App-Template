@@ -8,7 +8,7 @@ export const fetchOrderHistory = async () => {
     const token = await AsyncStorage.getItem("user_token");
     if (!token) throw new Error("No token found. Please log in.");
 
-    const response = await fetch(`${API_BASE_URL}/order/history`, {
+    const response = await fetch(`${API_BASE_URL}/order/history?page=0&size=100000`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

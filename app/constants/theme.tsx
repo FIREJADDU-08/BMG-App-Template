@@ -28,7 +28,7 @@ export const COLORS = {
 
 	//dark theme
 	darkCard: "#1C212E",
-	darkBackground: "#0C101C",
+	darkBackground: "#924770ff",
 	darkText: "#B8B8B8",
 	darkTextLight: "#6C6E77",
 	darkTitle: "#fff",

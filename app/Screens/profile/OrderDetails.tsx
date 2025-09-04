@@ -179,10 +179,15 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
     Linking.openURL(`mailto:${email}`);
   };
 
-  const handleTrackOrder = () => {
-    // Navigate to TrackOrder screen with order details
-    navigation.navigate('Trackorder', { order });
-  };
+const handleTrackOrder = () => {
+  console.log('Navigating with orderId:', order.orderId);
+  if (!order?.orderId) {
+    console.warn('No order ID available!');
+    return;
+  }
+  navigation.navigate('Trackorder', { orderId: order.orderId });
+};
+
 
   const SectionHeader = ({ title, isExpanded, onToggle, icon }: { title: string, isExpanded: boolean, onToggle: () => void, icon: string }) => (
     <TouchableOpacity onPress={onToggle} style={styles.sectionHeader}>
@@ -198,59 +203,7 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
     </TouchableOpacity>
   );
 
-  const getCurrentStep = () => {
-    const statusUpper = order.status.toUpperCase();
-    switch (statusUpper) {
-      case 'PLACED':
-      case 'PENDING':
-        return 0;
-      case 'PROCESSING':
-      case 'CONFIRMED':
-        return 1;
-      case 'SHIPPED':
-        return 2;
-      case 'DELIVERED':
-      case 'COMPLETED':
-        return 3;
-      default:
-        return -1;
-    }
-  };
 
-  const TimelineStep = ({ label, isActive, isCompleted, isFirst, isLast }) => {
-    return (
-      <View style={styles.timelineStep}>
-        <View style={styles.timelineStepContainer}>
-          <View style={[
-            styles.timelineIconContainer,
-            isActive && styles.timelineIconActive,
-            isCompleted && styles.timelineIconCompleted
-          ]}>
-            {isCompleted ? (
-              <Icon name="check" size={16} color={COLORS.white} />
-            ) : (
-              <View style={[
-                styles.timelineDot,
-                isActive && styles.timelineDotActive
-              ]} />
-            )}
-          </View>
-          <Text style={[
-            styles.timelineLabel,
-            { color: isActive || isCompleted ? colors.title : colors.text }
-          ]}>
-            {label}
-          </Text>
-        </View>
-        {!isLast && (
-          <View style={[
-            styles.timelineConnector,
-            (isActive || isCompleted) && styles.timelineConnectorActive
-          ]} />
-        )}
-      </View>
-    );
-  };
 
 
   if (!order) {
@@ -380,14 +333,7 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
                   <Text style={[styles.infoLabel, { color: colors.text }]}>Contact</Text>
                   <View style={styles.contactContainer}>
                     <Text style={[styles.infoValue, { color: colors.title }]}>{order.contact || 'N/A'}</Text>
-                    {order.contact && (
-                      <TouchableOpacity 
-                        style={styles.contactAction}
-                        onPress={() => handleCall(order.contact)}
-                      >
-                        <Icon name="call" size={16} color={COLORS.primary} />
-                      </TouchableOpacity>
-                    )}
+                    
                   </View>
                 </View>
               </View>
@@ -400,14 +346,6 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
                   <Text style={[styles.infoLabel, { color: colors.text }]}>Email</Text>
                   <View style={styles.contactContainer}>
                     <Text style={[styles.infoValue, { color: colors.title }]}>{order.email || 'N/A'}</Text>
-                    {order.email && (
-                      <TouchableOpacity 
-                        style={styles.contactAction}
-                        onPress={() => handleEmail(order.email)}
-                      >
-                        <Icon name="mail" size={16} color={COLORS.primary} />
-                      </TouchableOpacity>
-                    )}
                   </View>
                 </View>
               </View>
@@ -453,7 +391,7 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
                 <View style={styles.infoTextContainer}>
                   <Text style={[styles.infoLabel, { color: colors.text }]}>Payment Status</Text>
                   <View style={[styles.statusBadge, { 
-                    backgroundColor: order.paymentStatus === 'PAID' ? COLORS.success : COLORS.warning 
+                    backgroundColor: order.paymentStatus === 'SUCCESS' ? COLORS.success : COLORS.warning 
                   }]}>
                     <Text style={styles.statusText}>{order.paymentStatus || 'N/A'}</Text>
                   </View>

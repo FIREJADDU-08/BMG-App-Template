@@ -8,10 +8,10 @@ import {
     Text,
     StyleSheet,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useTheme } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
 import { getOfferBanners } from "../Services/OfferBannerService";
-import { FONTS } from "../constants/theme";
+import { FONTS, COLORS } from "../constants/theme";
 
 const { width } = Dimensions.get("window");
 const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
@@ -21,6 +21,7 @@ export default function BannerSlider() {
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
     const navigation = useNavigation<any>();
+    const { colors } = useTheme();
 
     useEffect(() => {
         const fetchBanners = async () => {
@@ -39,45 +40,49 @@ export default function BannerSlider() {
 
     const getImageUrl = (path: string) => {
         if (!path) return `${IMAGE_BASE_URL}/fallback-image.jpg`;
-        
+
         if (path.startsWith("http")) return path;
-        
-        // Ensure path starts with a slash
+
         const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-        
-        // Only encode the filename part (after the last slash)
-        const lastSlashIndex = normalizedPath.lastIndexOf('/');
+        const lastSlashIndex = normalizedPath.lastIndexOf("/");
         const directory = normalizedPath.substring(0, lastSlashIndex + 1);
         const filename = normalizedPath.substring(lastSlashIndex + 1);
         const encodedFilename = encodeURIComponent(filename);
-        
+
         return `${IMAGE_BASE_URL}${directory}${encodedFilename}`;
     };
 
     const handlePress = (item: any) => {
         if (item.item_name && item.sub_item_name) {
-            const params = {
+            navigation.navigate("Products", {
                 itemName: item.item_name,
                 subItemName: item.sub_item_name,
-            };
-            console.log("Navigating to Products with:", params);
-            navigation.navigate("Products", params);
+            });
         }
     };
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#D4AF37" />
-                <Text style={styles.loadingText}>Loading offers...</Text>
+            <View style={[styles.loadingContainer, { backgroundColor: colors.card }]}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={[styles.loadingText, { color: colors.text }]}>
+                    Loading offers...
+                </Text>
             </View>
         );
     }
 
     if (!loading && banners.length === 0) {
         return (
-            <View style={styles.placeholderContainer}>
-                <Text style={styles.placeholderText}>No offers available</Text>
+            <View
+                style={[
+                    styles.placeholderContainer,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+            >
+                <Text style={[styles.placeholderText, { color: colors.text }]}>
+                    No offers available
+                </Text>
             </View>
         );
     }
@@ -86,8 +91,15 @@ export default function BannerSlider() {
         <View style={styles.container}>
             {/* Section Header */}
             <View style={styles.headerContainer}>
-                <Text style={styles.sectionTitle}>Exclusive Offers</Text>
-                <Text style={styles.sectionSubtitle}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Exclusive Offers
+                </Text>
+                <Text
+                    style={[
+                        styles.sectionSubtitle,
+                        { color: colors.textSecondary || COLORS.textLight },
+                    ]}
+                >
                     Grab the best deals on jewelry
                 </Text>
             </View>
@@ -116,10 +128,10 @@ export default function BannerSlider() {
                                 transform: [
                                     { scale: index === currentIndex ? 1 : 0.95 },
                                 ],
+                                backgroundColor: colors.card,
                             },
                         ]}
                     >
-                        {/* Image */}
                         <Image
                             source={{
                                 uri: getImageUrl(item.image_path),
@@ -128,16 +140,10 @@ export default function BannerSlider() {
                             style={styles.bannerImage}
                             defaultSource={require("../assets/images/item/pic14.png")}
                             resizeMode="cover"
-                            onError={(e) => {
-                                console.log("Image load error:", e.nativeEvent.error);
-                                console.log("Failed URL:", getImageUrl(item.image_path));
-                            }}
                         />
 
-                        {/* Gradient Overlay */}
                         <View style={styles.gradientOverlay} />
 
-                        {/* Content */}
                         <View style={styles.contentContainer}>
                             <View style={styles.textContainer}>
                                 <Text style={styles.titleText} numberOfLines={2}>
@@ -151,8 +157,12 @@ export default function BannerSlider() {
                             </View>
                         </View>
 
-                        {/* Corner Decoration */}
-                        <View style={styles.cornerDecoration} />
+                        <View
+                            style={[
+                                styles.cornerDecoration,
+                                { borderColor: COLORS.primary },
+                            ]}
+                        />
                     </TouchableOpacity>
                 )}
             />
@@ -167,8 +177,8 @@ export default function BannerSlider() {
                             {
                                 backgroundColor:
                                     index === currentIndex
-                                        ? "#D4AF37"
-                                        : "rgba(212, 175, 55, 0.3)",
+                                        ? COLORS.primary
+                                        : `${COLORS.primary}50`,
                                 width: index === currentIndex ? 24 : 8,
                             },
                         ]}
@@ -178,7 +188,6 @@ export default function BannerSlider() {
         </View>
     );
 }
-
 
 const styles = StyleSheet.create({
     container: {
@@ -193,14 +202,12 @@ const styles = StyleSheet.create({
         ...FONTS.Marcellus,
         fontSize: 26,
         fontWeight: "600",
-        color: "#000000",
         textAlign: "center",
         marginBottom: 4,
     },
     sectionSubtitle: {
         ...FONTS.fontRegular,
         fontSize: 14,
-        color: "#666",
         textAlign: "center",
         fontStyle: "italic",
     },
@@ -211,31 +218,26 @@ const styles = StyleSheet.create({
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f9f9f9",
         marginHorizontal: 16,
         borderRadius: 12,
     },
     loadingText: {
         ...FONTS.fontRegular,
         fontSize: 14,
-        color: "#666",
         marginTop: 8,
     },
     placeholderContainer: {
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f5f5f5",
         borderRadius: 12,
         marginHorizontal: 16,
         borderWidth: 1,
-        borderColor: "#e0e0e0",
         borderStyle: "dashed",
     },
     placeholderText: {
         ...FONTS.fontRegular,
         fontSize: 16,
-        color: "#999",
     },
     slideContainer: {
         position: "relative",
@@ -253,7 +255,6 @@ const styles = StyleSheet.create({
         height: "100%",
         borderRadius: 12,
     },
- 
     contentContainer: {
         position: "absolute",
         left: 0,
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     },
     titleText: {
         ...FONTS.Marcellus,
-        color: "#fff",
+        color: COLORS.white,
         fontSize: 24,
         lineHeight: 28,
         fontWeight: "600",
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     },
     subtitleText: {
         ...FONTS.fontRegular,
-        color: "#fff",
+        color: COLORS.white,
         fontSize: 14,
         lineHeight: 18,
         marginBottom: 72,
@@ -293,7 +294,6 @@ const styles = StyleSheet.create({
         height: 24,
         borderTopWidth: 3,
         borderRightWidth: 3,
-        borderColor: "#D4AF37",
         borderTopRightRadius: 8,
     },
     paginationContainer: {
@@ -307,6 +307,5 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         marginHorizontal: 3,
-        backgroundColor: "rgba(212, 175, 55, 0.3)",
     },
 });
