@@ -917,13 +917,13 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
         </LazyWrapper> 
 
         {/* Optional components that can be toggled */}
-         {/* <LazyWrapper name="People Also Viewed">
+         <LazyWrapper name="People Also Viewed">
           <PeopleAlsoViewed navigation={navigation} />
         </LazyWrapper>
 
         <LazyWrapper name="Great Savings">
           <GreatSavingsSection navigation={navigation} />
-        </LazyWrapper>  */}
+        </LazyWrapper> 
 
         {/* Add scroll to top button */}
         {/* <TouchableOpacity 

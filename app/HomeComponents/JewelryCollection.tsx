@@ -17,10 +17,10 @@ import { FONTS, COLORS, SIZES } from '../constants/theme';
 import { getMainCategoryImages } from '../Services/CategoryImageService';
 import IMAGES from '../constants/Images';
 
-const { width } = Dimensions.get('screen'); // updated to match your theme
+const { width } = Dimensions.get('screen');
 
 const CARD_WIDTH = 90;
-const CARD_MARGIN = SIZES.margin - 5; // dynamic margin
+const CARD_MARGIN = SIZES.margin - 5;
 
 const JewelryCollection = () => {
   const theme = useTheme();
@@ -32,40 +32,6 @@ const JewelryCollection = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  const processImagePath = useCallback((imagePath) => {
-    try {
-      let parsedImages = [];
-      
-      if (Array.isArray(imagePath)) {
-        parsedImages = imagePath;
-      } else if (typeof imagePath === 'string') {
-        if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
-          parsedImages = JSON.parse(imagePath);
-        } else {
-          parsedImages = [imagePath];
-        }
-      }
-
-      const validImages = parsedImages
-        .filter(img => img && typeof img === 'string' && img.trim() !== '')
-        .map(img => {
-          const cleanImg = img.trim();
-          if (cleanImg.startsWith('http')) {
-            return cleanImg;
-          } else if (cleanImg.startsWith('/uploads')) {
-            return `https://app.bmgjewellers.com${cleanImg}`;
-          } else {
-            return `https://app.bmgjewellers.com/uploads/${cleanImg}`;
-          }
-        });
-
-      return validImages.length > 0 ? validImages[0] : null;
-    } catch (err) {
-      console.warn('ImagePath processing failed:', err);
-      return null;
-    }
-  }, []);
-
   const fetchCategories = useCallback(async (isRefreshing = false) => {
     try {
       isRefreshing ? setRefreshing(true) : setLoading(true);
@@ -73,11 +39,12 @@ const JewelryCollection = () => {
       
       const data = await getMainCategoryImages();
       
+      // Filter out categories without names and ensure we have valid image URLs
       const validCategories = data
-        .filter(category => category.name)
+        .filter(category => category.name && category.name.trim() !== '')
         .map(category => ({
           ...category,
-          image: processImagePath(category.image) || IMAGES.item13
+          image: category.image || IMAGES.item13 // Use placeholder if no image
         }));
       
       setCategories(validCategories);
@@ -88,7 +55,7 @@ const JewelryCollection = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [processImagePath]);
+  }, []);
 
   useEffect(() => {
     fetchCategories();
@@ -164,7 +131,7 @@ const JewelryCollection = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.titleContainer}>
         <Text style={[styles.title, { color: colors.text }]}>
-          Curate Your Perfect{"\n"}Jewelry Collection
+          Our Jewelry{"\n"} Collections
         </Text>
         {categories.length > 0 && (
           <TouchableOpacity onPress={handleSeeAll}>

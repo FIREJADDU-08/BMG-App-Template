@@ -1,3 +1,4 @@
+// ImageSwper2.tsx
 import React, { useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import Animated, { 
@@ -16,15 +17,24 @@ import { COLORS } from '../constants/theme';
 interface ProductItem {
   id: string | number;
   SNO?: string; // Added for wishlist compatibility
-  image?: string;
+  image?: any;
   title?: string;
   price?: string;
   discount?: string;
   offer?: string;
+  delivery?: string;
+  isFavorite?: boolean;
+  onFavoritePress?: () => void;
   // more fields as needed
 }
 
-const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
+interface ImageSwper2Props {
+  data: ProductItem[];
+  onProductPress: (id: string | number) => void;
+  favoriteIcon?: React.ReactNode;
+}
+
+const ImageSwper2 = ({ data, onProductPress, favoriteIcon }: ImageSwper2Props) => {
   const [newData] = useState([{ key: 'space-left' }, ...data, { key: 'space-right' }]);
   const { width } = useWindowDimensions();
   const SIZE = width * 0.6;
@@ -55,7 +65,9 @@ const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
     } else {
       dispatch(addProductToWishList({
         SNO: productId.toString(),
-        ...item,
+        SUBITEMNAME: item.title || '',
+        GrandTotal: parseFloat(item.price || '0'),
+        ImagePath: typeof item.image === 'string' ? item.image : '',
         // Add other necessary product fields
       }));
     }
@@ -73,7 +85,7 @@ const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
       contentContainerStyle={{ paddingVertical: 10 }}
     >
       {newData.map((item, index) => {
-        if (!item.image) {
+        if (item.key) {
           return <View key={`spacer-${index}`} style={{ width: SPACER }} />;
         }
 
@@ -96,19 +108,20 @@ const ImageSwper2 = ({ data }: { data: ProductItem[] }) => {
             <Animated.View style={[style, { overflow: 'hidden' }]}>
               <CardStyle1
                 id={productId}
-                image={item.image!}
+                image={item.image}
                 title={item.title || ''}
                 price={item.price || ''}
                 discount={item.discount || ''}
                 offer={item.offer || ''}
-                onPress={() => navigation.navigate('ProductDetails', { sno: productId })}
+                delivery={item.delivery || ''}
+                onPress={() => onProductPress(productId)}
                 Cardstyle4
                 onPress1={() => toggleWishlist(item)}
                 wishlistActive={inWishlist}
                 likebtn
                 wishlistIcon={
                   <Feather 
-                    name={inWishlist ? "heart" : "heart"} 
+                    name="heart" 
                     size={20} 
                     color={inWishlist ? COLORS.danger : COLORS.title} 
                     fill={inWishlist ? COLORS.danger : 'none'}

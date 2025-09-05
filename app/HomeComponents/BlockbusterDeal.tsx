@@ -1,3 +1,4 @@
+// BlockbusterDeals.tsx
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTheme } from '@react-navigation/native';
@@ -116,8 +117,9 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
           <ImageSwper2
             data={featuredProducts.map((product) => ({
               id: product.SNO,
+              SNO: product.SNO, // Add this line to pass SNO
               image: product.mainImage,
-              title: product.SUBITEMNAME || 'Jewelry Item',
+              title: product.ITEMNAME || 'Jewelry Item',
               price: `${product.GrandTotal}`,
               discount: product.Discount
                 ? `₹${(product.GrandTotal * 1.1).toFixed(2)}`

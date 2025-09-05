@@ -203,8 +203,8 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
                                 : fallbackImage
                             }
                             title={product.SUBITEMNAME || "Jewelry Item"}
-                            price={`₹${price.toFixed(2)}`}
-                            discount={`₹${discountPrice.toFixed(2)}`}
+                            price={`₹ ${price.toFixed(2)}`}
+                            discount={`₹ ${discountPrice.toFixed(2)}`}
                             onPress={() =>
                               navigation.navigate("ProductDetails", {
                                 sno: product.SNO,

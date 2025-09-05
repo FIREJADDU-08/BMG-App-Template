@@ -111,7 +111,7 @@ const SponsoredProducts = () => {
                           {product.SUBITEMNAME.split(' ').join('\n')}
                         </Text>
                         <Text style={{ ...FONTS.Marcellus, fontSize: 16, color: colors.title, marginTop: 5 }}>
-                          ${product.GrandTotal}
+                          ₹ {product.GrandTotal}
                         </Text>
                       </View>
                       <View>

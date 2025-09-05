@@ -1,18 +1,20 @@
 import React, { Component } from 'react';
-import { View, Text, SafeAreaView,Image } from 'react-native';
+import { View, Text, SafeAreaView,Image, TouchableOpacity } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import {  Circle, Text as SvgText, TextPath, TSpan, G, Svg }from 'react-native-svg';
 import { IMAGES } from '../constants/Images';
+import { useNavigation } from '@react-navigation/native';
 
 
 const SvgcurvedText = ({small} :any) => {
+    const navigation = useNavigation();
   
     const theme = useTheme();
     const {colors} : {colors : any} = theme;
 
-    return (
-        <SafeAreaView style={{}}>
-            <View style={{}}>
+                    return (
+                        <SafeAreaView style={{}}>
+            <TouchableOpacity onPress={() => {navigation.navigate('Products')}} style={{}}>
                 <Svg height="150" width="150"
                 viewBox="0 0 180 180" >
                     <G id="circle">
@@ -41,7 +43,7 @@ const SvgcurvedText = ({small} :any) => {
                         source={IMAGES.playbtn}
                     />
                 </View>
-            </View>
+            </TouchableOpacity>
         </SafeAreaView>
     
     )

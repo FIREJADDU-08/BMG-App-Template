@@ -50,7 +50,7 @@ const CardStyle1 = ({
     const { colors } = theme;
     const dispatch = useDispatch();
 
-    const FALLBACK_IMAGE = require('../../assets/images/item/bridal.jpg');
+    const FALLBACK_IMAGE = IMAGES.item12
     const [imageSrc, setImageSrc] = useState(
         typeof image === 'string' ? { uri: image } : image || FALLBACK_IMAGE
     );

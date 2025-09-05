@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://app.bmgjewellers.com/api/v1';
+import { API_BASE_URL } from "../Config/baseUrl";
 const IMAGE_BASE_URL = 'https://app.bmgjewellers.com';
 
 export const getMainCategoryImages = async () => {
@@ -20,7 +20,7 @@ export const getMainCategoryImages = async () => {
       name: item.item_name?.trim() || "Unnamed",
       image: item.image_path
         ? `${IMAGE_BASE_URL}${item.image_path}`
-        : "https://via.placeholder.com/100",
+        : null, // Use null instead of placeholder
       createdAt: item.created_at
     }));
   } catch {

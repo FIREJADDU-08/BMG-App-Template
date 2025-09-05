@@ -31,7 +31,7 @@ type Props = {
 
 const HighlyRecommendedSection = ({
   navigation,
-  title = 'Highly Recommended\nJewelry Essentials',
+  title = 'New Arrivals',
   showSeeAll = true,
 }: Props) => {
   const theme = useTheme();
@@ -142,65 +142,44 @@ const handleCartAction = useCallback(async (product: any) => {
 
 const getImageUrl = useCallback((product: any): string => {
   try {
-    // If there's no ImagePath or it's too short, return default image
+    // If no ImagePath or it's too short, return default image
     if (!product.ImagePath || product.ImagePath.length < 5) {
       return IMAGES.item12;
     }
-    
-    // Case 1: Direct image path (like "/uploads/app_banners/...")
-    if (typeof product.ImagePath === 'string' && 
-        product.ImagePath.startsWith('/') && 
-        !product.ImagePath.startsWith('[')) {
-      
-      let imageUrl = product.ImagePath;
-      if (!imageUrl.startsWith('http')) {
-        imageUrl = `https://app.bmgjewellers.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-      }
-      return imageUrl;
-    }
-    
-    // Case 2: JSON string array (like "[\"/uploads/product_images/...\", ...]")
-    let parsedImages;
+
+    let parsedImages: any[] = [];
+
+    // Parse ImagePath
     if (typeof product.ImagePath === 'string') {
       try {
         parsedImages = JSON.parse(product.ImagePath);
-      } catch (e) {
-        // If it's not valid JSON, try to handle it as a single string
-        if (product.ImagePath.startsWith('/')) {
-          let imageUrl = product.ImagePath;
-          if (!imageUrl.startsWith('http')) {
-            imageUrl = `https://app.bmgjewellers.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-          }
-          return imageUrl;
-        }
-        return IMAGES.item12;
+      } catch {
+        parsedImages = [product.ImagePath]; // fallback if not JSON
       }
-    } else {
-      // Case 3: Already an array
+    } else if (Array.isArray(product.ImagePath)) {
       parsedImages = product.ImagePath;
     }
-    
-    // Get the first image from the array
-    let image = Array.isArray(parsedImages) && parsedImages.length > 0 
-      ? parsedImages[0] 
-      : '';
-    
-    // Handle case where image might be null or undefined
-    if (!image || typeof image !== 'string') {
-      return IMAGES.item12;
-    }
-    
-    // Ensure proper URL format
+
+    // Get first image
+    let image = parsedImages.length > 0 ? parsedImages[0] : '';
+
+    if (!image || typeof image !== 'string') return IMAGES.item12;
+
+    // Fix spaces in URL
+    image = image.trim().replace(/\s/g, '%20');
+
+    // Ensure full URL
     if (!image.startsWith('http')) {
       image = `https://app.bmgjewellers.com${image.startsWith('/') ? '' : '/'}${image}`;
     }
-    
+
     return image;
   } catch (err) {
     console.error('Image URL parsing error:', err);
     return IMAGES.item12;
   }
 }, []);
+
 
   const memoizedProducts = useMemo(() => products, [products]);
 
@@ -264,7 +243,7 @@ const getImageUrl = useCallback((product: any): string => {
           {title}
         </Text>
         
-        {showSeeAll && (
+        {/* {showSeeAll && (
           <TouchableOpacity 
             onPress={() => navigation.navigate('RecommendedProducts')}
             style={styles.seeAllButton}
@@ -274,7 +253,7 @@ const getImageUrl = useCallback((product: any): string => {
             </Text>
             <Feather name="chevron-right" size={16} color={colors.title} />
           </TouchableOpacity>
-        )}
+        )} */}
       </View>
 
       <ScrollView
