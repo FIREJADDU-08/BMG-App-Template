@@ -3,27 +3,35 @@
     "version": ">= 3.0.0"
   },
   "build": {
-    "production": {
-      "distribution": "store",
-      "android": {
-        "buildType": "app-bundle",
-        "releaseChannel": "production"
-      },
-      "ios": {
-        "simulator": false,
-        "releaseChannel": "production"
-      }
-    },
     "development": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "releaseChannel": "development"
+        "buildType": "apk"
       },
       "ios": {
-        "simulator": true,
-        "releaseChannel": "development"
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
       }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }

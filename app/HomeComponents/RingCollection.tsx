@@ -168,9 +168,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fafafa',
+    marginBottom: -50, // Removed bottom margin to eliminate extra space
   },
   headerContainer: {
-    padding: 16,
+    padding: 10,
     alignItems: 'center',
     paddingTop: 20, // Added top padding for better spacing
   },

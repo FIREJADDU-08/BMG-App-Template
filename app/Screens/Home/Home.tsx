@@ -916,14 +916,7 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
           <RingCollection navigation={navigation}  />
         </LazyWrapper> 
 
-        {/* Optional components that can be toggled */}
-//         <LazyWrapper name="People Also Viewed">
-//          <PeopleAlsoViewed navigation={navigation} />
-//        </LazyWrapper>
-//
-//        <LazyWrapper name="Great Savings">
-//          <GreatSavingsSection navigation={navigation} />
-//        </LazyWrapper> 
+    
         
         <Footer />    
 
