@@ -10,6 +10,22 @@ export interface OccasionBanner {
 
 import { API_BASE_URL } from "../Config/baseUrl";
 
+const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
+
+// Helper function to construct proper image URLs
+export const getImageUrl = (path: string | null | undefined): string => {
+  if (!path) return `${IMAGE_BASE_URL}/fallback-image.jpg`;
+
+  // If path is already a full URL, return it directly
+  if (path.startsWith('http')) {
+    return path;
+  }
+  
+  // Remove any leading slash if the path already starts with one
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  return `${IMAGE_BASE_URL}${cleanPath}`;
+};
 
 export const getOccasionBanners = async (): Promise<OccasionBanner[]> => {
   try {
@@ -20,7 +36,13 @@ export const getOccasionBanners = async (): Promise<OccasionBanner[]> => {
     }
 
     const data: OccasionBanner[] = await response.json();
-    return data;
+    
+    // Process images to ensure proper URLs
+    return data.map(banner => ({
+      ...banner,
+      image_path: getImageUrl(banner.image_path)
+    }));
+    
   } catch (error) {
     console.error('Error fetching banners:', error);
     throw error;

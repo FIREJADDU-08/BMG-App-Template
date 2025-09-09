@@ -36,7 +36,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
   const dispatch = useDispatch();
   const sheetRef = useRef<any>();
   const scrollViewRef = useRef<any>();
-  
+
   // State management
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,22 +70,39 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
   // Track navigation state to detect when we're coming back
   const navigationState = useRef<any>();
 
-  // Reset all filters and state when component mounts or when route params change significantly
+  // Reset filters and navigation data when navigating via bottom tab or no filters provided
   useEffect(() => {
-    // Check if we're coming from a different screen (not the same navigation state)
-    const isComingFromDifferentScreen = 
-      !navigationState.current || 
-      JSON.stringify(navigationState.current) !== JSON.stringify(navigation.getState());
+    // Detect if coming from bottom tab or no params provided
+    const isComingFromBottomTab = route.params?.source === 'bottomTab' || !route.params;
+    // Check if no filters or navigation data are provided
+    const hasNoFiltersOrNavData =
+      !route.params?.itemName &&
+      !route.params?.subItemName &&
+      !route.params?.initialFilters &&
+      !route.params?.gender &&
+      !route.params?.occasion &&
+      !route.params?.colorAccent &&
+      !route.params?.materialFinish &&
+      !route.params?.sizeName &&
+      !route.params?.category &&
+      !route.params?.brand &&
+      !route.params?.minGrandTotal &&
+      !route.params?.maxGrandTotal &&
+      !route.params?.priceRange;
 
-    if (isInitialMount.current || isComingFromDifferentScreen) {
-      console.log('Resetting filters for fresh start');
-      
-      // Reset all filters
+    if (isInitialMount.current || isComingFromBottomTab || hasNoFiltersOrNavData) {
+      console.log('Resetting filters and navigation data for fresh start (bottom tab or no data)');
+      // Reset all filters and navigation-related state
       setSearchQuery('');
       setAppliedFilters({});
       setActiveFilters(defaultFilters);
+      setCategoryError(null);
+      setProducts([]);
       productService.resetPagination();
-      
+      fetchProducts(true, '', {}); // Fetch products with no filters or navigation data
+    } else {
+      // Apply filters and navigation data from route params
+      console.log('Applying filters and navigation data from route params');
       const {
         itemName,
         subItemName,
@@ -121,19 +138,16 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         ...(brand && { brand }),
         ...(minGrandTotal !== undefined && { minGrandTotal }),
         ...(maxGrandTotal !== undefined && { maxGrandTotal }),
-        ...(priceRange && { 
-          minGrandTotal: priceRange.min, 
-          maxGrandTotal: priceRange.max 
+        ...(priceRange && {
+          minGrandTotal: priceRange.min,
+          maxGrandTotal: priceRange.max,
         }),
       };
 
       console.log('All merged filters from route:', allFilters);
-      
       setActiveFilters(allFilters);
       setAppliedFilters(allFilters);
-      
-      // Fetch products with new filters
-      fetchProducts(true);
+      fetchProducts(true, searchQuery, { itemName, subItemName, ...allFilters });
     }
 
     // Store current navigation state for future comparison
@@ -141,35 +155,33 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
     isInitialMount.current = false;
 
     return () => {
-      // Cleanup when component unmounts
       console.log('Products component unmounting');
     };
   }, [route.params]);
 
-  // Handle focus event to reset when coming back to this screen
+  // Handle focus event to reset when coming back via bottom tab
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       console.log('Products screen focused');
-      // Check if we need to reset based on navigation state
       const currentState = navigation.getState();
-      const cameFromDifferentScreen = 
-        !navigationState.current || 
-        JSON.stringify(navigationState.current) !== JSON.stringify(currentState);
-      
-      if (cameFromDifferentScreen) {
-        console.log('Coming from different screen, resetting filters');
+      const isComingFromBottomTab = route.params?.source === 'bottomTab' || !route.params;
+
+      if (isComingFromBottomTab) {
+        console.log('Coming from bottom tab, resetting filters and navigation data');
         setSearchQuery('');
         setAppliedFilters({});
         setActiveFilters(defaultFilters);
+        setCategoryError(null);
+        setProducts([]);
         productService.resetPagination();
-        fetchProducts(true);
+        fetchProducts(true, '', {});
       }
-      
+
       navigationState.current = currentState;
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, route.params]);
 
   // Log active filters
   useEffect(() => {
@@ -184,7 +196,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         productService.resetPagination();
         setProducts([]);
         setCategoryError(null);
-        fetchProducts(true, query);
+        fetchProducts(true, query, appliedFilters);
       }, 500),
     [appliedFilters]
   );
@@ -196,27 +208,30 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
     };
   }, [debouncedSearch]);
 
-  const handleSearch = useCallback((query: string) => {
-    console.log('Search query changed to:', query);
-    setSearchQuery(query);
-    setCategoryError(null);
-    
-    if (query.trim() === '') {
-      productService.resetPagination();
-      setProducts([]);
-      // Restore category error if itemName exists
-      if (route.params?.itemName) {
-        setCategoryError(`No products found for "${route.params.itemName}" category`);
-      }
-      fetchProducts(true);
-    } else {
-      debouncedSearch(query);
-    }
-  }, [debouncedSearch, route.params]);
+  const handleSearch = useCallback(
+    (query: string) => {
+      console.log('Search query changed to:', query);
+      setSearchQuery(query);
+      setCategoryError(null);
 
-  // Fetch products with enhanced error handling
+      if (query.trim() === '') {
+        productService.resetPagination();
+        setProducts([]);
+        // Only set category error if itemName exists and no search query
+        if (route.params?.itemName && !isComingFromBottomTab()) {
+          setCategoryError(`No products found for "${route.params.itemName}" category`);
+        }
+        fetchProducts(true, '', appliedFilters);
+      } else {
+        debouncedSearch(query);
+      }
+    },
+    [debouncedSearch, route.params, appliedFilters]
+  );
+
+  // Modified fetchProducts to accept filters explicitly
   const fetchProducts = useCallback(
-    async (reset: boolean = false, search: string = searchQuery) => {
+    async (reset: boolean = false, search: string = searchQuery, filters: any = appliedFilters) => {
       if (isFetching) return;
       setIsFetching(true);
 
@@ -235,44 +250,38 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
           setLoadingMore(true);
         }
 
-        const filters = {
-          itemName: route.params?.itemName,
-          subItemName: route.params?.subItemName,
-          ...appliedFilters,
+        const fetchFilters = {
+          ...filters,
           searchQuery: search.trim(),
         };
 
-        console.log('Fetching products with filters:', filters);
-        const data = await productService.getFilteredProducts(filters);
+        console.log('Fetching products with filters:', fetchFilters);
+        const data = await productService.getFilteredProducts(fetchFilters);
 
         if (reset) {
           setProducts(data);
-          
-          // Check if no products found for specific category
-          if (data.length === 0 && route.params?.itemName && !search.trim()) {
-            setCategoryError(`No products found for "${route.params.itemName}" category`);
+          if (data.length === 0 && filters.itemName && !search.trim()) {
+            setCategoryError(`No products found for "${filters.itemName}" category`);
           } else if (data.length === 0 && search.trim()) {
             setCategoryError(`No products found for search "${search}"`);
           } else {
             setCategoryError(null);
           }
         } else {
-          setProducts(prev => [...prev, ...data]);
+          setProducts((prev) => [...prev, ...data]);
         }
 
         setError(null);
       } catch (err) {
         console.error('Error fetching products:', err);
-        
-        // Enhanced error handling with category-specific messages
         let errorMessage = 'Failed to load products. Please check your connection and try again.';
-        
+
         if (err instanceof Error) {
           if (err.message.includes('Network connection error')) {
             errorMessage = 'Network connection error. Please check your internet connection.';
           } else if (err.message.includes('Invalid request')) {
-            if (route.params?.itemName) {
-              errorMessage = `Invalid category "${route.params.itemName}". Please try a different category.`;
+            if (filters.itemName) {
+              errorMessage = `Invalid category "${filters.itemName}". Please try a different category.`;
               setCategoryError(errorMessage);
             } else {
               errorMessage = 'Invalid search criteria. Please adjust your filters.';
@@ -281,9 +290,8 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
             errorMessage = 'Server temporarily unavailable. Please try again later.';
           }
         }
-        
+
         setError(errorMessage);
-        
         if (reset) {
           setProducts([]);
         }
@@ -294,44 +302,44 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         setIsFetching(false);
       }
     },
-    [appliedFilters, searchQuery, isFetching, route.params]
+    [isFetching, searchQuery, appliedFilters]
   );
 
-  // Refresh handler
   const onRefresh = useCallback(() => {
     console.log('Refreshing products list');
     setRefreshing(true);
     setError(null);
     setCategoryError(null);
-    fetchProducts(true);
-  }, [fetchProducts]);
+    fetchProducts(true, '', appliedFilters);
+  }, [fetchProducts, appliedFilters]);
 
-  // Handle filter changes
-  const handleFiltersChange = useCallback((filters: any) => {
-    console.log('Filters changed:', filters);
-    setCategoryError(null);
-    
-    setActiveFilters(prev => {
-      const newFilters = { ...prev, ...filters };
-      
-      const filtersChanged = Object.keys(filters).some(
-        key => prev[key as keyof typeof prev] !== filters[key]
-      );
-      
-      if (filtersChanged) {
-        setAppliedFilters(newFilters);
-        setTimeout(() => {
-          productService.resetPagination();
-          setProducts([]);
-          fetchProducts(true);
-        }, 100);
-      }
-      
-      return newFilters;
-    });
-  }, [fetchProducts]);
+  const handleFiltersChange = useCallback(
+    (filters: any) => {
+      console.log('Filters changed:', filters);
+      setCategoryError(null);
 
-  // Debounced scroll handler for auto-pagination
+      setActiveFilters((prev) => {
+        const newFilters = { ...prev, ...filters };
+
+        const filtersChanged = Object.keys(filters).some(
+          (key) => prev[key as keyof typeof prev] !== filters[key]
+        );
+
+        if (filtersChanged) {
+          setAppliedFilters(newFilters);
+          setTimeout(() => {
+            productService.resetPagination();
+            setProducts([]);
+            fetchProducts(true, searchQuery, { ...newFilters, itemName: route.params?.itemName, subItemName: route.params?.subItemName });
+          }, 100);
+        }
+
+        return newFilters;
+      });
+    },
+    [fetchProducts, searchQuery, route.params]
+  );
+
   const debouncedHandleScroll = useMemo(
     () =>
       debounce(({ layoutMeasurement, contentOffset, contentSize }) => {
@@ -341,13 +349,12 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
 
         if (isCloseToBottom && productService.hasMoreData() && !loadingMore && !loading && !isFetching) {
           console.log('Scrolled near bottom, loading more products');
-          fetchProducts(false);
+          fetchProducts(false, searchQuery, appliedFilters);
         }
       }, 100),
-    [loadingMore, loading, isFetching, fetchProducts]
+    [loadingMore, loading, isFetching, fetchProducts, searchQuery, appliedFilters]
   );
 
-  // Handle scroll event
   const handleScroll = useCallback(
     (event: any) => {
       const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent || {};
@@ -358,14 +365,12 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
     [debouncedHandleScroll]
   );
 
-  // Cleanup scroll handler
   useEffect(() => {
     return () => {
       debouncedHandleScroll.cancel();
     };
   }, [debouncedHandleScroll]);
 
-  // Redux actions
   const addItemToWishList = useCallback(
     (data: ProductItem) => {
       console.log('Adding to wishlist:', data);
@@ -373,90 +378,87 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
     },
     [dispatch]
   );
-  
+
   const addItemToCart = useCallback(
     (data: ProductItem) => {
       console.log('Adding to cart:', data);
       dispatch(addToCart(data));
-      setCartItemCount(prev => prev + 1);
+      setCartItemCount((prev) => prev + 1);
     },
     [dispatch]
   );
 
-  // Check if any filters are active
   const hasActiveFilters = useCallback(() => {
-    return searchQuery.trim() !== '' || 
-           Object.entries(appliedFilters).some(([key, value]) => {
-             if (key === 'minGrandTotal') return value > 0;
-             if (key === 'maxGrandTotal') return value < 10000000000;
-             return value && value !== '';
-           });
+    return (
+      searchQuery.trim() !== '' ||
+      Object.entries(appliedFilters).some(([key, value]) => {
+        if (key === 'minGrandTotal') return value > 0;
+        if (key === 'maxGrandTotal') return value < 10000000000;
+        return value && value !== '';
+      })
+    );
   }, [searchQuery, appliedFilters]);
 
-  // Clear all filters
   const clearAllFilters = useCallback(() => {
-    console.log('Clearing all filters');
+    console.log('Clearing all filters and navigation data');
     setSearchQuery('');
     setCategoryError(null);
     setActiveFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
     productService.resetPagination();
-    fetchProducts(true);
+    fetchProducts(true, '', {});
   }, [fetchProducts]);
 
-  // Navigate to different category
   const navigateToCategory = useCallback(() => {
     navigation.navigate('Search');
   }, [navigation]);
 
-  // Render product grid with enhanced error handling
+  const isComingFromBottomTab = () => route.params?.source === 'bottomTab' || !route.params;
+
   const renderProducts = useCallback(() => {
     if (loading && products.length === 0) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ 
-            color: colors.text, 
-            marginTop: 16, 
-            ...FONTS.fontRegular,
-            fontSize: 16 
-          }}>
+          <Text style={{ color: colors.text, marginTop: 16, ...FONTS.fontRegular, fontSize: 16 }}>
             Loading products...
           </Text>
         </View>
       );
     }
 
-    // Show category-specific error
     if (categoryError && products.length === 0 && !loading) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
           <MaterialIcons name="category" size={48} color={colors.text} />
-          <Text style={{ 
-            color: colors.text, 
-            textAlign: 'center', 
-            marginTop: 16,
-            marginHorizontal: 20,
-            ...FONTS.fontMedium,
-            fontSize: 18,
-            lineHeight: 24
-          }}>
+          <Text
+            style={{
+              color: colors.text,
+              textAlign: 'center',
+              marginTop: 16,
+              marginHorizontal: 20,
+              ...FONTS.fontMedium,
+              fontSize: 18,
+              lineHeight: 24,
+            }}
+          >
             {categoryError}
           </Text>
-          <Text style={{
-            color: colors.text,
-            textAlign: 'center',
-            marginTop: 8,
-            marginHorizontal: 20,
-            ...FONTS.fontRegular,
-            fontSize: 14,
-            opacity: 0.7,
-            lineHeight: 20
-          }}>
+          <Text
+            style={{
+              color: colors.text,
+              textAlign: 'center',
+              marginTop: 8,
+              marginHorizontal: 20,
+              ...FONTS.fontRegular,
+              fontSize: 14,
+              opacity: 0.7,
+              lineHeight: 20,
+            }}
+          >
             This category might be empty or unavailable.{'\n'}
             Try searching for products or browse other categories.
           </Text>
-          
           <View style={{ flexDirection: 'row', marginTop: 20 }}>
             <TouchableOpacity
               onPress={navigateToCategory}
@@ -465,66 +467,64 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
                 paddingHorizontal: 20,
                 paddingVertical: 12,
                 borderRadius: 8,
-                marginRight: 12
+                marginRight: 12,
               }}
             >
-              <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>
-                Browse Categories
-              </Text>
+              <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>Browse Categories</Text>
             </TouchableOpacity>
           </View>
         </View>
       );
     }
 
-    // Show general error
     if (error && products.length === 0 && !categoryError) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 }}>
           <MaterialIcons name="error-outline" size={48} color={colors.text} />
-          <Text style={{ 
-            color: colors.text, 
-            textAlign: 'center', 
-            marginTop: 16,
-            marginHorizontal: 20,
-            ...FONTS.fontRegular,
-            fontSize: 16,
-            lineHeight: 24
-          }}>
+          <Text
+            style={{
+              color: colors.text,
+              textAlign: 'center',
+              marginTop: 16,
+              marginHorizontal: 20,
+              ...FONTS.fontRegular,
+              fontSize: 16,
+              lineHeight: 24,
+            }}
+          >
             {error}
           </Text>
           <TouchableOpacity
-            onPress={() => fetchProducts(true)}
+            onPress={() => fetchProducts(true, '', appliedFilters)}
             style={{
               backgroundColor: colors.primary,
               paddingHorizontal: 24,
               paddingVertical: 12,
               borderRadius: 8,
-              marginTop: 16
+              marginTop: 16,
             }}
           >
-            <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>
-              Try Again
-            </Text>
+            <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
-    // Show no products found for search/filters
     if (products.length === 0 && !categoryError) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
           <MaterialIcons name="search-off" size={48} color={colors.text} />
-          <Text style={{
-            color: colors.text,
-            textAlign: 'center',
-            marginTop: 16,
-            marginHorizontal: 20,
-            ...FONTS.fontRegular,
-            fontSize: 16,
-            lineHeight: 24
-          }}>
+          <Text
+            style={{
+              color: colors.text,
+              textAlign: 'center',
+              marginTop: 16,
+              marginHorizontal: 20,
+              ...FONTS.fontRegular,
+              fontSize: 16,
+              lineHeight: 24,
+            }}
+          >
             No products found matching your criteria.{'\n'}
             Try adjusting your search or filters.
           </Text>
@@ -535,12 +535,10 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
               paddingHorizontal: 24,
               paddingVertical: 12,
               borderRadius: 8,
-              marginTop: 16
+              marginTop: 16,
             }}
           >
-            <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>
-              Clear Filters
-            </Text>
+            <Text style={{ color: COLORS.white, ...FONTS.fontMedium }}>Clear Filters</Text>
           </TouchableOpacity>
         </View>
       );
@@ -569,7 +567,20 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         ))}
       </View>
     );
-  }, [loading, error, categoryError, products, colors, clearAllFilters, fetchProducts, addItemToWishList, addItemToCart, navigation, navigateToCategory]);
+  }, [
+    loading,
+    error,
+    categoryError,
+    products,
+    colors,
+    clearAllFilters,
+    fetchProducts,
+    addItemToWishList,
+    addItemToCart,
+    navigation,
+    navigateToCategory,
+    appliedFilters,
+  ]);
 
   return (
     <SafeAreaView style={{ backgroundColor: colors.background, flex: 1 }}>
@@ -589,9 +600,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         <View
           style={{
             height: 60,
-            backgroundColor: theme.dark
-              ? 'rgba(0,0,0,.4)'
-              : 'rgba(255,255,255,.4)',
+            backgroundColor: theme.dark ? 'rgba(0,0,0,.4)' : 'rgba(255,255,255,.4)',
             borderBottomLeftRadius: 25,
             borderBottomRightRadius: 25,
             flexDirection: 'row',
@@ -613,9 +622,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
                 console.log('Navigating back');
                 navigation.goBack();
               }}
-              icon={(props) => (
-                <MaterialIcons name="arrow-back-ios" {...props} />
-              )}
+              icon={(props) => <MaterialIcons name="arrow-back-ios" {...props} />}
               iconColor={colors.title}
               size={20}
             />
@@ -633,9 +640,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
           >
             <TextInput
               placeholder="Search products..."
-              placeholderTextColor={
-                theme.dark ? 'rgba(255, 255, 255, .6)' : 'rgba(0, 0, 0, 0.6)'
-              }
+              placeholderTextColor={theme.dark ? 'rgba(255, 255, 255, .6)' : 'rgba(0, 0, 0, 0.6)'}
               style={{
                 ...FONTS.fontRegular,
                 fontSize: 16,
@@ -684,10 +689,10 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
           >
             <Image
               source={IMAGES.filter}
-              style={{ 
-                height: 20, 
-                width: 20, 
-                tintColor: hasActiveFilters() ? COLORS.white : colors.title 
+              style={{
+                height: 20,
+                width: 20,
+                tintColor: hasActiveFilters() ? COLORS.white : colors.title,
               }}
             />
             {hasActiveFilters() && (
@@ -712,29 +717,19 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
               console.log('Navigating to cart');
               navigation.navigate('MyCart');
             }}
-            style={{ 
-              padding: 10, 
-              marginRight: 10, 
-              marginLeft: 10,
-              position: 'relative' 
-            }}
+            style={{ padding: 10, marginRight: 10, marginLeft: 10, position: 'relative' }}
           >
             <Image
               style={{ height: 22, width: 22, tintColor: colors.title }}
               source={IMAGES.shopping2}
             />
             {cartItemCount > 0 && (
-              <View
-                style={[
-                  GlobalStyleSheet.notification,
-                  { position: 'absolute', right: 3, top: 3 },
-                ]}
-              >
+              <View style={[GlobalStyleSheet.notification, { position: 'absolute', right: 3, top: 3 }]}>
                 <Text
-                  style={{ 
-                    ...FONTS.fontRegular, 
-                    fontSize: 10, 
-                    color: COLORS.white 
+                  style={{
+                    ...FONTS.fontRegular,
+                    fontSize: 10,
+                    color: COLORS.white,
                   }}
                 >
                   {cartItemCount > 99 ? '99+' : cartItemCount}
@@ -748,11 +743,7 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
       <View style={[GlobalStyleSheet.container, { paddingTop: 20, flex: 1 }]}>
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={{ 
-            paddingBottom: 40, 
-            paddingHorizontal: 15,
-            flexGrow: 1
-          }}
+          contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 15, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -768,46 +759,53 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
           }
         >
           {hasActiveFilters() && !categoryError && (
-            <View style={{ 
-              flexDirection: 'row', 
-              alignItems: 'center', 
-              marginBottom: 16,
-              paddingHorizontal: 4,
-              paddingVertical: 8,
-              backgroundColor: colors.card,
-              borderRadius: 8,
-            }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 16,
+                paddingHorizontal: 4,
+                paddingVertical: 8,
+                backgroundColor: colors.card,
+                borderRadius: 8,
+              }}
+            >
               <MaterialIcons name="filter-list" size={16} color={colors.primary} />
-              <Text style={{ 
-                marginLeft: 8, 
-                color: colors.text, 
-                ...FONTS.fontRegular,
-                fontSize: 14,
-                flex: 1
-              }}>
+              <Text
+                style={{
+                  marginLeft: 8,
+                  color: colors.text,
+                  ...FONTS.fontRegular,
+                  fontSize: 14,
+                  flex: 1,
+                }}
+              >
                 {Object.entries(appliedFilters)
                   .filter(([key, value]) => {
                     if (key === 'minGrandTotal') return value > 0;
                     if (key === 'maxGrandTotal') return value < 10000000000;
                     return value && value !== '';
                   })
-                  .length} filters applied
+                  .length}{' '}
+                filters applied
                 {searchQuery && ` • Search: "${searchQuery}"`}
               </Text>
               <TouchableOpacity
                 onPress={clearAllFilters}
-                style={{ 
+                style={{
                   paddingVertical: 4,
                   paddingHorizontal: 8,
                   backgroundColor: colors.primary,
-                  borderRadius: 4
+                  borderRadius: 4,
                 }}
               >
-                <Text style={{ 
-                  color: COLORS.white, 
-                  ...FONTS.fontMedium,
-                  fontSize: 12
-                }}>
+                <Text
+                  style={{
+                    color: COLORS.white,
+                    ...FONTS.fontMedium,
+                    fontSize: 12,
+                  }}
+                >
                   Clear All
                 </Text>
               </TouchableOpacity>
@@ -815,30 +813,34 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
           )}
 
           {renderProducts()}
-          
+
           {loadingMore && (
             <View style={{ alignItems: 'center', paddingVertical: 20 }}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={{
-                marginTop: 8,
-                color: colors.text,
-                ...FONTS.fontRegular,
-                fontSize: 14
-              }}>
+              <Text
+                style={{
+                  marginTop: 8,
+                  color: colors.text,
+                  ...FONTS.fontRegular,
+                  fontSize: 14,
+                }}
+              >
                 Loading more products...
               </Text>
             </View>
           )}
-          
+
           {!productService.hasMoreData() && products.length > 0 && !loading && (
             <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-              <Text style={{
-                textAlign: 'center',
-                color: colors.text,
-                ...FONTS.fontRegular,
-                fontSize: 14,
-                opacity: 0.7
-              }}>
+              <Text
+                style={{
+                  textAlign: 'center',
+                  color: colors.text,
+                  ...FONTS.fontRegular,
+                  fontSize: 14,
+                  opacity: 0.7,
+                }}
+              >
                 You've reached the end of the list
               </Text>
             </View>
@@ -846,9 +848,9 @@ const Products = ({ navigation, route }: ProductsScreenProps) => {
         </ScrollView>
       </View>
 
-      <BottomSheet2 
-        ref={sheetRef} 
-        onFiltersChange={handleFiltersChange} 
+      <BottomSheet2
+        ref={sheetRef}
+        onFiltersChange={handleFiltersChange}
         initialFilters={activeFilters}
         currentFilters={activeFilters}
       />

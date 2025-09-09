@@ -1,15 +1,15 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useTheme } from '@react-navigation/native';
-import { 
-  View, 
-  Text, 
-  SafeAreaView, 
-  Animated, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  SafeAreaView,
+  Animated,
+  TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   RefreshControl,
-  Image
+  Image,
 } from 'react-native';
 import { COLORS, FONTS, SIZES } from '../../constants/theme';
 import { GlobalStyleSheet } from '../../constants/StyleSheet';
@@ -24,20 +24,18 @@ import { IMAGES } from '../../constants/Images';
 type MyorderScreenProps = StackScreenProps<RootStackParamList, 'Myorder'>;
 
 interface OrderItem {
-  id: number;
-  sno: string;
   itemid: number;
+  sno: string;
   tagno: string;
   productName: string;
   quantity: number;
   price: number;
-  image_path: string;
+  imagePath: string;
   imageUrls?: string[];
   priceFormatted?: string;
 }
 
 interface Order {
-  id: number | null;
   orderId: string;
   customerName: string;
   contact: string;
@@ -48,7 +46,6 @@ interface Order {
   orderTime: string;
   paymentMode: string | null;
   paymentStatus: string | null;
-  courierName: string | null;
   courierTrackingId: string | null;
   orderItems: OrderItem[];
   statusInfo?: any;
@@ -69,6 +66,8 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
 
+  const FALLBACK_IMAGE = IMAGES.item14; // ✅ local asset fallback
+
   /** Load Orders API */
   const loadOrders = useCallback(async (forceRefresh: boolean = false) => {
     try {
@@ -76,28 +75,26 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
       setRefreshing(forceRefresh);
       setError(null);
 
-      const orders = await fetchOrderHistory({
-        forceRefresh,
-        useCache: !forceRefresh,
-        timeout: 30000
-      });
+      const orders = await fetchOrderHistory();
 
-      console.log('Fetched orders:', orders);
-
-      // Filter orders based on status
-      const ongoing = orders.filter((order: Order) => 
-        order.status && !['COMPLETED', 'DELIVERED', 'CANCELLED'].includes(order.status.toUpperCase())
+      const ongoing = orders.filter(
+        (order: Order) =>
+          order.status &&
+          !['COMPLETED', 'DELIVERED', 'CANCELLED'].includes(
+            order.status.toUpperCase()
+          )
       );
-      
-      const completed = orders.filter((order: Order) => 
-        order.status && ['COMPLETED', 'DELIVERED', 'CANCELLED'].includes(order.status.toUpperCase())
+
+      const completed = orders.filter(
+        (order: Order) =>
+          order.status &&
+          ['COMPLETED', 'DELIVERED', 'CANCELLED'].includes(
+            order.status.toUpperCase()
+          )
       );
 
       setOngoingOrders(ongoing);
       setCompletedOrders(completed);
-
-      console.log(`Loaded ${ongoing.length} ongoing and ${completed.length} completed orders`);
-
     } catch (err: any) {
       console.error('Order load error:', err);
       setError(err?.message || 'Failed to load orders');
@@ -123,111 +120,227 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     });
   };
 
-  // Function to process image paths from API
-  const processImagePaths = (imagePath: any): string[] => {
-    if (!imagePath) return [];
-    
-    try {
-      // Handle different formats
-      let paths: string[] = [];
+  /** Improved Image source helper */
+  const renderImageSource = (
+    imageUrls?: string[] | string
+  ): { uri?: string } | number => {
+    // If no image URLs provided, return fallback
+    if (!imageUrls) return FALLBACK_IMAGE;
+
+    // Handle string input
+    if (typeof imageUrls === 'string') {
+      // Empty string case
+      if (!imageUrls.trim()) return FALLBACK_IMAGE;
       
-      // Case 1: Already an array
-      if (Array.isArray(imagePath)) {
-        paths = imagePath;
-      } 
-      // Case 2: String that looks like a JSON array
-      else if (typeof imagePath === 'string' && imagePath.trim().startsWith('[')) {
-        paths = JSON.parse(imagePath);
-      }
-      // Case 3: Single URL string
-      else if (typeof imagePath === 'string') {
-        paths = [imagePath];
+      // Already a full URL
+      if (imageUrls.startsWith('http')) {
+        return { uri: imageUrls };
       }
       
-      // Process each path to ensure it's a valid URL
-      return paths
-        .filter(path => path && typeof path === 'string')
-        .map(path => {
-          const cleanPath = path.trim();
-          
-          // If it's already a full URL, return as is
-          if (cleanPath.startsWith('http')) {
-            return cleanPath;
-          }
-          
-          // If it's a relative path, prepend the base URL
-          if (cleanPath.startsWith('/')) {
-            return `https://app.bmgjewellers.com${cleanPath}`;
-          }
-          
-          return `https://app.bmgjewellers.com/${cleanPath}`;
-        });
-    } catch (error) {
-      console.warn('Error processing image paths:', error);
-      return [];
+      // Relative path - construct full URL
+      return { uri: `https://app.bmgjewellers.com${imageUrls.startsWith('/') ? '' : '/'}${imageUrls}` };
     }
+
+    // Handle array input
+    if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+      const first = imageUrls[0];
+      
+      // Empty string in array
+      if (!first || !first.trim()) return FALLBACK_IMAGE;
+      
+      // Already a full URL
+      if (first.startsWith('http')) {
+        return { uri: first };
+      }
+      
+      // Relative path in array
+      return { uri: `https://app.bmgjewellers.com${first.startsWith('/') ? '' : '/'}${first}` };
+    }
+
+    // Default fallback
+    return FALLBACK_IMAGE;
   };
 
-  const renderImageSource = (imageUrls: string[] | null | undefined) => {
-    if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-      return IMAGES.fallbackImage;
-    }
+  // Custom Card Component with better image handling
+  const CustomOrderCard = ({ 
+    id, 
+    title, 
+    price, 
+    image, 
+    status, 
+    offer, 
+    onPress, 
+    btntitel 
+  }: any) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+    
+    const handleImageError = () => {
+      setImageError(true);
+      setImageLoading(false);
+    };
+    
+    const handleImageLoad = () => {
+      setImageLoading(false);
+    };
 
-    // Try to find a valid image URL from the array
-    for (const imageUrl of imageUrls) {
-      if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
-        const cleanUrl = imageUrl.trim();
-        if (cleanUrl.startsWith('http') || cleanUrl.startsWith('file')) {
-          return { uri: cleanUrl };
-        }
-      }
-    }
+    return (
+      <TouchableOpacity
+        style={{
+          backgroundColor: colors.card,
+          borderRadius: SIZES.radius,
+          marginBottom: 15,
+          padding: 15,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
+        onPress={onPress}
+      >
+        {/* Image Container */}
+        <View
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: SIZES.radius,
+            backgroundColor: colors.background,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 15,
+            overflow: 'hidden',
+          }}
+        >
+          {imageLoading && (
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          )}
+          
+          {(imageError || !image) ? (
+            <View
+              style={{
+                width: '100%',
+                height: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.background,
+              }}
+            >
+              <Text
+                style={{
+                  ...FONTS.fontXs,
+                  color: colors.text,
+                  textAlign: 'center',
+                }}
+              >
+                No Image
+              </Text>
+            </View>
+          ) : (
+            <Image
+              source={image}
+              style={{
+                width: '100%',
+                height: '100%',
+                resizeMode: 'cover',
+              }}
+              onError={handleImageError}
+              onLoad={handleImageLoad}
+            />
+          )}
+        </View>
 
-    return IMAGES.fallbackImage;
+        {/* Content */}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              ...FONTS.fontMedium,
+              fontSize: 16,
+              color: colors.title,
+              marginBottom: 5,
+            }}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+          
+          <Text
+            style={{
+              ...FONTS.fontMedium,
+              color: COLORS.primary,
+              marginBottom: 5,
+            }}
+          >
+            {price}
+          </Text>
+          
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Text
+              style={{
+                ...FONTS.fontXs,
+                color: colors.text,
+              }}
+            >
+              {status}
+            </Text>
+            
+            <Text
+              style={{
+                ...FONTS.fontXs,
+                color: colors.text,
+              }}
+            >
+              {offer}
+            </Text>
+          </View>
+        </View>
+
+        {/* Button */}
+        <TouchableOpacity
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            backgroundColor: COLORS.primary,
+            borderRadius: SIZES.radius,
+          }}
+          onPress={onPress}
+        >
+          <Text
+            style={{
+              ...FONTS.fontXs,
+              color: COLORS.white,
+            }}
+          >
+            {btntitel}
+          </Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
   };
 
   const getOrderDisplayItem = (order: Order): OrderItem | null => {
-    if (!order.orderItems || order.orderItems.length === 0) {
-      return null;
-    }
-    
-    // Return the first item for display
-    return order.orderItems[0];
+    return order.orderItems?.[0] || null;
   };
 
   const getOrderTitle = (order: Order): string => {
     const displayItem = getOrderDisplayItem(order);
     const itemCount = order.orderItems?.length || 0;
-    
-    if (!displayItem) {
-      return `Order ${order.orderId}`;
-    }
-    
-    const productName = displayItem.productName || 'Unknown Product';
-    
-    if (itemCount > 1) {
-      return `${productName} (+${itemCount - 1} more)`;
-    }
-    
-    return productName;
+    if (!displayItem) return `Order ${order.orderId}`;
+    return itemCount > 1
+      ? `${displayItem.productName} (+${itemCount - 1} more)`
+      : displayItem.productName;
   };
 
   const getOrderPrice = (order: Order): string => {
-    if (order.totalFormatted) {
-      return order.totalFormatted;
-    }
-    
-    if (order.totalAmount) {
-      return `₹${order.totalAmount.toFixed(2)}`;
-    }
-    
-    // Fallback to first item price if total not available
+    if (order.totalFormatted) return order.totalFormatted;
+    if (order.totalAmount) return `₹${order.totalAmount.toFixed(2)}`;
     const displayItem = getOrderDisplayItem(order);
-    if (displayItem?.price) {
-      return displayItem.priceFormatted || `₹${displayItem.price.toFixed(2)}`;
-    }
-    
-    return '₹0.00';
+    return displayItem?.price
+      ? displayItem.priceFormatted || `₹${displayItem.price.toFixed(2)}`
+      : '₹0.00';
   };
 
   const renderOrderCards = (
@@ -237,8 +350,22 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
   ) => {
     if (orders.length === 0) {
       return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 400 }}>
-          <Text style={{ ...FONTS.fontRegular, color: colors.text, textAlign: 'center' }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+            minHeight: 400,
+          }}
+        >
+          <Text
+            style={{
+              ...FONTS.fontRegular,
+              color: colors.text,
+              textAlign: 'center',
+            }}
+          >
             No {currentIndex === 0 ? 'ongoing' : 'completed'} orders found
           </Text>
           <TouchableOpacity
@@ -260,60 +387,74 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     }
 
     return orders.map((order, index) => {
-      // Process image paths for the first item to display
       const displayItem = getOrderDisplayItem(order);
-      let imageUrls: string[] = [];
-      
-      if (displayItem && displayItem.image_path) {
-        imageUrls = processImagePaths(displayItem.image_path);
-      }
-      
-      const imageSource = renderImageSource(imageUrls);
+      const imageSource = renderImageSource(displayItem?.imagePath || displayItem?.imageUrls);
 
       return (
-        <CardStyle3
-          id={order.orderId}
+        <CustomOrderCard
           key={`${order.orderId}-${index}`}
+          id={order.orderId}
           title={getOrderTitle(order)}
           price={getOrderPrice(order)}
           image={imageSource}
-          discount={null}
-          btntitel={buttonTitle}
           status={order.statusInfo?.label || order.status || ''}
           offer={order.formattedDate || ''}
+          btntitel={buttonTitle}
           onPress={() =>
             navigation.navigate('OrderDetails', {
               order: order,
             })
           }
-          grid
-          removebtn={true}
         />
       );
     });
   };
 
+  /** Loader */
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ ...FONTS.fontRegular, marginTop: 10, color: colors.text }}>
+        <Text
+          style={{
+            ...FONTS.fontRegular,
+            marginTop: 10,
+            color: colors.text,
+          }}
+        >
           Loading orders...
         </Text>
       </SafeAreaView>
     );
   }
 
+  /** Error */
   if (error && !refreshing) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <Text style={{ 
-          ...FONTS.fontRegular, 
-          marginBottom: 20, 
-          color: colors.text, 
-          textAlign: 'center', 
-          padding: 20 
-        }}>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <Text
+          style={{
+            ...FONTS.fontRegular,
+            marginBottom: 20,
+            color: colors.text,
+            textAlign: 'center',
+            padding: 20,
+          }}
+        >
           {error}
         </Text>
         <TouchableOpacity
@@ -332,6 +473,7 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     );
   }
 
+  /** Main UI */
   return (
     <SafeAreaView style={{ backgroundColor: colors.background, flex: 1 }}>
       <Header title="My Order" leftIcon="back" />
@@ -349,7 +491,12 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
             backgroundColor: 'rgba(255,255,255,.1)',
           }}
         >
-          <View style={[GlobalStyleSheet.container, { paddingTop: 20, paddingHorizontal: 60 }]}>
+          <View
+            style={[
+              GlobalStyleSheet.container,
+              { paddingTop: 20, paddingHorizontal: 60 },
+            ]}
+          >
             <View
               style={{
                 flexDirection: 'row',
@@ -367,16 +514,20 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
                 style={[
                   GlobalStyleSheet.TouchableOpacity2,
                   {
-                    backgroundColor: currentIndex === 0 ? COLORS.primary : colors.card,
-                    borderColor: currentIndex === 0 ? COLORS.primary : colors.title,
+                    backgroundColor:
+                      currentIndex === 0 ? COLORS.primary : colors.card,
+                    borderColor:
+                      currentIndex === 0 ? COLORS.primary : colors.title,
                   },
                 ]}
               >
-                <Text style={{ 
-                  ...FONTS.fontRegular, 
-                  fontSize: 15, 
-                  color: currentIndex === 0 ? colors.card : colors.text 
-                }}>
+                <Text
+                  style={{
+                    ...FONTS.fontRegular,
+                    fontSize: 15,
+                    color: currentIndex === 0 ? colors.card : colors.text,
+                  }}
+                >
                   Ongoing ({ongoingOrders.length})
                 </Text>
               </TouchableOpacity>
@@ -385,16 +536,20 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
                 style={[
                   GlobalStyleSheet.TouchableOpacity2,
                   {
-                    backgroundColor: currentIndex === 1 ? COLORS.primary : colors.card,
-                    borderColor: currentIndex === 1 ? COLORS.primary : colors.title,
+                    backgroundColor:
+                      currentIndex === 1 ? COLORS.primary : colors.card,
+                    borderColor:
+                      currentIndex === 1 ? COLORS.primary : colors.title,
                   },
                 ]}
               >
-                <Text style={{ 
-                  ...FONTS.fontRegular, 
-                  fontSize: 15, 
-                  color: currentIndex === 1 ? colors.card : colors.text 
-                }}>
+                <Text
+                  style={{
+                    ...FONTS.fontRegular,
+                    fontSize: 15,
+                    color: currentIndex === 1 ? colors.card : colors.text,
+                  }}
+                >
                   Completed ({completedOrders.length})
                 </Text>
               </TouchableOpacity>
@@ -409,19 +564,26 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
           showsHorizontalScrollIndicator={false}
           ref={scrollRef}
           onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { x: scrollX } } }], 
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
             { useNativeDriver: false }
           )}
           onMomentumScrollEnd={(e: any) => {
-            const pageIndex = Math.round(e.nativeEvent.contentOffset.x / SIZES.width);
+            const pageIndex = Math.round(
+              e.nativeEvent.contentOffset.x / SIZES.width
+            );
             setCurrentIndex(pageIndex);
           }}
         >
           {/* Ongoing Orders */}
           <View style={{ width: SIZES.width }}>
-            <View style={[GlobalStyleSheet.container, { paddingTop: 0, paddingBottom: 0 }]}>
-              <ScrollView 
-                showsVerticalScrollIndicator={false} 
+            <View
+              style={[
+                GlobalStyleSheet.container,
+                { paddingTop: 0, paddingBottom: 0 },
+              ]}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
                   <RefreshControl
@@ -439,9 +601,14 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
 
           {/* Completed Orders */}
           <View style={{ width: SIZES.width }}>
-            <View style={[GlobalStyleSheet.container, { paddingTop: 0, paddingBottom: 0 }]}>
-              <ScrollView 
-                showsVerticalScrollIndicator={false} 
+            <View
+              style={[
+                GlobalStyleSheet.container,
+                { paddingTop: 0, paddingBottom: 0 },
+              ]}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
                   <RefreshControl

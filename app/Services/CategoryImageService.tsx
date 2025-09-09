@@ -1,5 +1,21 @@
 import { API_BASE_URL } from "../Config/baseUrl";
+
 const IMAGE_BASE_URL = 'https://app.bmgjewellers.com';
+
+// Helper function to construct proper image URLs
+const getImageUrl = (path: string | null | undefined): string | null => {
+  if (!path) return null;
+  
+  // If path is already a full URL, return it directly
+  if (path.startsWith('http')) {
+    return path;
+  }
+  
+  // Remove any leading slash if the path already starts with one
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  return `${IMAGE_BASE_URL}${cleanPath}`;
+};
 
 export const getMainCategoryImages = async () => {
   try {
@@ -15,12 +31,11 @@ export const getMainCategoryImages = async () => {
       return [];
     }
 
+    // Use the helper function in your mapping
     return data.map(item => ({
       id: item.id,
       name: item.item_name?.trim() || "Unnamed",
-      image: item.image_path
-        ? `${IMAGE_BASE_URL}${item.image_path}`
-        : null, // Use null instead of placeholder
+      image: getImageUrl(item.image_path),
       createdAt: item.created_at
     }));
   } catch {

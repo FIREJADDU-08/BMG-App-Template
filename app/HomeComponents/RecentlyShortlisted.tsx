@@ -41,81 +41,66 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Enhanced image path processing
-  const processImagePath = useCallback((imagePath: any): string => {
-    const fallbackImage = IMAGES.item13;
-
-    if (!imagePath) return fallbackImage;
-
-    try {
-      let imageUrl = '';
-
-      if (typeof imagePath === 'string' && imagePath.startsWith('/') && !imagePath.startsWith('[')) {
-        imageUrl = imagePath;
-      } else if (typeof imagePath === 'string' && imagePath.startsWith('[')) {
-        try {
-          const parsedImages = JSON.parse(imagePath);
-          if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-            imageUrl = parsedImages[0];
-          }
-        } catch {
-          const match = imagePath.match(/"([^"]+)"/);
-          imageUrl = match ? match[1] : imagePath;
-        }
-      } else if (Array.isArray(imagePath) && imagePath.length > 0) {
-        imageUrl = imagePath[0];
-      } else if (typeof imagePath === 'object' && imagePath !== null) {
-        imageUrl = imagePath.url || imagePath.path || imagePath.image || '';
-      } else if (typeof imagePath === 'string') {
-        imageUrl = imagePath;
-      }
-
-      if (!imageUrl) return fallbackImage;
-      imageUrl = imageUrl.replace(/["'[\]]/g, '').trim();
-
-      if (imageUrl.startsWith('http')) return imageUrl;
-      if (imageUrl.startsWith('/')) return `https://app.bmgjewellers.com${imageUrl}`;
-      return `https://app.bmgjewellers.com/${imageUrl.replace(/^\/+/, '')}`;
-    } catch {
-      return fallbackImage;
-    }
+  // Handle image loading errors
+  const handleImageError = useCallback((imageUrl: string) => {
+    console.log('Image failed to load:', imageUrl);
+    setFailedImages(prev => new Set(prev).add(imageUrl));
   }, []);
 
+  // Get working image URL (fallback if image failed to load)
+  const getWorkingImage = useCallback((product: Product): string => {
+    if (failedImages.has(product.image)) {
+      return IMAGES.item13;
+    }
+    return product.image || IMAGES.item13;
+  }, [failedImages]);
+
   // Process products
-  const processProducts = useCallback(
-    (rawProducts: any[]): Product[] => {
-      if (!Array.isArray(rawProducts)) return [];
+  const processProducts = useCallback((rawProducts: any[]): Product[] => {
+    if (!Array.isArray(rawProducts)) {
+      console.log('Invalid products data:', rawProducts);
+      return [];
+    }
 
-      return rawProducts.map((product, index) => {
-        const imageSource = product.ImagePath || product.image || product.image_url || product.img;
-        const processedImage = processImagePath(imageSource);
+    console.log('Processing products:', rawProducts.length);
 
-        return {
-          id: product.SNO || product.TAGKEY || product.id || `product-${index}`,
-          title: product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product',
-          price: product.GrandTotal || product.RATE || product.price || 0,
-          discount: product.discount || 0,
-          image: processedImage,
-          rawData: product,
-        };
-      });
-    },
-    [processImagePath],
-  );
+    return rawProducts.map((product, index) => {
+      const processedProduct = {
+        id: product.SNO || product.TAGKEY || product.id || `product-${index}`,
+        title: product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product',
+        price: product.GrandTotal || product.RATE || product.price || 0,
+        discount: product.discount || 0,
+        image: product.ImagePath || IMAGES.item13,
+        rawData: product,
+      };
+
+      console.log('Processed product image:', processedProduct.image);
+      return processedProduct;
+    });
+  }, []);
 
   // Fetch products
   const fetchRecentlyViewed = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setFailedImages(new Set());
+      
+      console.log('Fetching recently viewed products...');
       const data = await getRecentlyViewedProducts();
+      
+      console.log('Received data:', data);
+      
       if (Array.isArray(data)) {
         const processedProducts = processProducts(data);
+        console.log('Processed products:', processedProducts.length);
         setProducts(processedProducts);
       } else {
+        console.log('Invalid data format');
         setProducts([]);
       }
-    } catch {
+    } catch (error) {
+      console.error('Fetch error:', error);
       setError('Failed to load recently viewed products. Please try again.');
       setProducts([]);
     } finally {
@@ -138,16 +123,9 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     navigation.navigate('RecentlyViewed');
   }, [navigation]);
 
-  const handleImageError = useCallback((imageUrl: string) => {
-    setFailedImages(prev => new Set(prev).add(imageUrl));
-  }, []);
-
-  const getWorkingImage = useCallback(
-    (product: Product): string => {
-      return failedImages.has(product.image) ? IMAGES.item13 : product.image || IMAGES.item13;
-    },
-    [failedImages],
-  );
+  const handleRefresh = useCallback(() => {
+    fetchRecentlyViewed();
+  }, [fetchRecentlyViewed]);
 
   const renderProductItem = useCallback(
     (product: Product, index: number) => {
@@ -172,15 +150,13 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     [handleProductPress, handleImageError, getWorkingImage],
   );
 
-  const handleRefresh = useCallback(() => {
-    setFailedImages(new Set());
-    fetchRecentlyViewed();
-  }, [fetchRecentlyViewed]);
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="small" color={COLORS.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Loading recently viewed...
+        </Text>
       </View>
     );
   }
@@ -200,7 +176,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     return (
       <View style={styles.emptyContainer}>
         <Text style={[styles.emptyText, { color: colors.text }]}>
-          No recently shortlisted products found.
+          No recently viewed products found.
         </Text>
         <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
           <Text style={[styles.refreshText, { color: COLORS.primary }]}>Refresh</Text>
@@ -247,6 +223,12 @@ const styles = StyleSheet.create({
     padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loadingText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    marginTop: SIZES.marginSmall,
+    textAlign: 'center',
   },
   errorContainer: {
     padding: SIZES.paddingLarge,

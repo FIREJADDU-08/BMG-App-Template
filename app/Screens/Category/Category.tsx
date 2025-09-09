@@ -7,8 +7,26 @@ import { FONTS, COLORS } from '../../constants/theme';
 import { IMAGES } from '../../constants/Images';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
+import { getMainCategoryImages } from '../../Services/CategoryImageService'; // Import your service
 
 type CategoryScreenProps = StackScreenProps<RootStackParamList, 'Category'>;
+
+// Helper function to handle image URLs
+const getImageUrl = (path: string | null | undefined): any => {
+  const IMAGE_BASE_URL = 'https://app.bmgjewellers.com';
+  
+  if (!path) return IMAGES.item11; // Fallback image
+  
+  // If path is already a full URL, return it directly
+  if (path.startsWith('http')) {
+    return { uri: path };
+  }
+  
+  // Remove any leading slash if the path already starts with one
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  return { uri: `${IMAGE_BASE_URL}${cleanPath}` };
+};
 
 const Category = ({ navigation, route }: CategoryScreenProps) => {
   const theme = useTheme();
@@ -28,10 +46,24 @@ const Category = ({ navigation, route }: CategoryScreenProps) => {
   const fetchAllCategories = async () => {
     try {
       setLoading(true);
-      // You'll need to implement getMainCategoryImages or similar function
-      // const data = await getMainCategoryImages();
-      // setAllCategories(data);
-      // For now, using a placeholder
+      const data = await getMainCategoryImages();
+      
+      if (data && data.length > 0) {
+        setAllCategories(data);
+      } else {
+        // Fallback to local images if API fails
+        setAllCategories([
+          { id: 1, name: 'Necklaces', image: IMAGES.item22 },
+          { id: 2, name: 'Rings', image: IMAGES.item23 },
+          { id: 3, name: 'Earrings', image: IMAGES.item24 },
+          { id: 4, name: 'Anklets', image: IMAGES.item25 },
+          { id: 5, name: 'Bracelets', image: IMAGES.product3 },
+          { id: 6, name: 'Pendants', image: IMAGES.product1 },
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      // Fallback to local images on error
       setAllCategories([
         { id: 1, name: 'Necklaces', image: IMAGES.item22 },
         { id: 2, name: 'Rings', image: IMAGES.item23 },
@@ -40,8 +72,6 @@ const Category = ({ navigation, route }: CategoryScreenProps) => {
         { id: 5, name: 'Bracelets', image: IMAGES.product3 },
         { id: 6, name: 'Pendants', image: IMAGES.product1 },
       ]);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
     } finally {
       setLoading(false);
     }
@@ -51,6 +81,17 @@ const Category = ({ navigation, route }: CategoryScreenProps) => {
     navigation.navigate('Products', { 
       itemName: categoryName,
     });
+  };
+
+  const handleImageError = (categoryId: string | number) => {
+    // If an image fails to load, replace it with a fallback image
+    setAllCategories(prev => 
+      prev.map(cat => 
+        cat.id === categoryId 
+          ? { ...cat, image: IMAGES.item11 } 
+          : cat
+      )
+    );
   };
 
   if (loading) {
@@ -86,38 +127,63 @@ const Category = ({ navigation, route }: CategoryScreenProps) => {
           </Text>
           
           <View style={[GlobalStyleSheet.row, { marginTop: 10 }]}>
-            {allCategories.map((category, index) => (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => handleCategoryPress(category.name)}
-                key={category.id || index}
-                style={[GlobalStyleSheet.col50, { marginBottom: 20 }]}
-              >
-                <View style={{ justifyContent: 'center' }}>
-                  <Image
-                    source={typeof category.image === 'string' ? { uri: category.image } : category.image}
-                    style={{ height: null, width: '100%', aspectRatio: 1/1.2, borderRadius: 20 }}
-                  />
-                  <View 
-                    style={{ 
-                      backgroundColor: colors.card,
-                      padding: 10,
-                      borderRadius: 20,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      position: 'absolute',
-                      bottom: 10,
-                      left: 10,
-                      right: 10,
-                    }}
-                  >
-                    <Text style={{ ...FONTS.fontMedium, fontSize: 16, color: colors.title, textAlign: 'center' }}>
-                      {category.name}
-                    </Text>
+            {allCategories.map((category, index) => {
+              // Determine the image source
+              let imageSource;
+              if (typeof category.image === 'string') {
+                imageSource = getImageUrl(category.image);
+              } else {
+                imageSource = category.image || IMAGES.item11;
+              }
+              
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => handleCategoryPress(category.name)}
+                  key={category.id || index}
+                  style={[GlobalStyleSheet.col50, { marginBottom: 20 }]}
+                >
+                  <View style={{ justifyContent: 'center' }}>
+                    <Image
+                      source={imageSource}
+                      style={{ 
+                        height: undefined, 
+                        width: '100%', 
+                        aspectRatio: 1/1.2, 
+                        borderRadius: 20,
+                        resizeMode: 'cover'
+                      }}
+                      onError={() => handleImageError(category.id || index)}
+                    />
+                    <View 
+                      style={{ 
+                        backgroundColor: colors.card,
+                        padding: 10,
+                        borderRadius: 20,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'absolute',
+                        bottom: 10,
+                        left: 10,
+                        right: 10,
+                      }}
+                    >
+                      <Text 
+                        style={{ 
+                          ...FONTS.fontMedium, 
+                          fontSize: 16, 
+                          color: colors.title, 
+                          textAlign: 'center' 
+                        }}
+                        numberOfLines={1}
+                      >
+                        {category.name}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </ScrollView>

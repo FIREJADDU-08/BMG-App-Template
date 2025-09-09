@@ -46,6 +46,61 @@ const HighlyRecommendedSection = ({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Image processing function
+  const getImageUrl = useCallback((product: any): string => {
+    try {
+      // If the service already processed the image, use it directly
+      if (product.image && product.image !== IMAGES.item11) {
+        return product.image;
+      }
+
+      // If no ImagePath or it's too short, return default image
+      if (!product.ImagePath || product.ImagePath.length < 5) {
+        return IMAGES.item12;
+      }
+
+      let parsedImages: any[] = [];
+
+      // Parse ImagePath (handles JSON string arrays)
+      if (typeof product.ImagePath === 'string') {
+        // Check if it's a JSON array string
+        if (product.ImagePath.startsWith('[') && product.ImagePath.endsWith(']')) {
+          try {
+            parsedImages = JSON.parse(product.ImagePath);
+          } catch {
+            // If JSON parsing fails, try to extract paths manually
+            const pathMatch = product.ImagePath.match(/"([^"]+)"/g);
+            parsedImages = pathMatch ? pathMatch.map((path: string) => path.replace(/"/g, '')) : [product.ImagePath];
+          }
+        } else {
+          parsedImages = [product.ImagePath];
+        }
+      } else if (Array.isArray(product.ImagePath)) {
+        parsedImages = product.ImagePath;
+      }
+
+      // Get first image
+      let image = parsedImages.length > 0 ? parsedImages[0] : '';
+
+      if (!image || typeof image !== 'string') return IMAGES.item12;
+
+      // Clean the image path
+      image = image.trim().replace(/["'[\]]/g, '');
+
+      // Ensure full URL
+      if (image.startsWith('http')) {
+        return image;
+      } else if (image.startsWith('/')) {
+        return `https://app.bmgjewellers.com${image}`;
+      } else {
+        return `https://app.bmgjewellers.com/${image}`;
+      }
+    } catch (err) {
+      console.error('Image URL parsing error:', err);
+      return IMAGES.item12;
+    }
+  }, []);
+
   // Fetch data on mount
   useEffect(() => {
     const loadInitialData = async () => {
@@ -103,35 +158,34 @@ const HighlyRecommendedSection = ({
       } else {
         await dispatch(addProductToWishList(product));
       }
-      // Don't need to fetch again as the state should be updated
     } catch (err) {
       console.error('Wishlist toggle error:', err);
     }
   }, [dispatch, wishList]);
 
-const handleCartAction = useCallback(async (product: any) => {
-  try {
-    const existingItem = cart.find((item) => item.itemTagSno === product.SNO);
-    
-    if (existingItem) {
-      await dispatch(removeItemFromCart(existingItem.sno));
-    } else {
-      const imageUrl = getImageUrl(product);
+  const handleCartAction = useCallback(async (product: any) => {
+    try {
+      const existingItem = cart.find((item) => item.itemTagSno === product.SNO);
       
-      const cartPayload = {
-        itemTagSno: product.SNO,
-        imagePath: imageUrl,
-        quantity: 1,
-        price: parseFloat(product.GrandTotal || product.GrossAmount || '0'),
-        productData: product
-      };
+      if (existingItem) {
+        await dispatch(removeItemFromCart(existingItem.sno));
+      } else {
+        const imageUrl = getImageUrl(product);
+        
+        const cartPayload = {
+          itemTagSno: product.SNO,
+          imagePath: imageUrl,
+          quantity: 1,
+          price: parseFloat(product.GrandTotal || product.GrossAmount || '0'),
+          productData: product
+        };
 
-      await dispatch(addItemToCart(cartPayload));
+        await dispatch(addItemToCart(cartPayload));
+      }
+    } catch (err) {
+      console.error('Cart action error:', err);
     }
-  } catch (err) {
-    console.error('Cart action error:', err);
-  }
-}, [dispatch, cart, getImageUrl]); // Add getImageUrl to dependencies
+  }, [dispatch, cart, getImageUrl]);
 
   const navigateToProductDetails = useCallback((product: any) => {
     navigation.navigate('ProductDetails', { 
@@ -139,47 +193,6 @@ const handleCartAction = useCallback(async (product: any) => {
       productData: product 
     });
   }, [navigation]);
-
-const getImageUrl = useCallback((product: any): string => {
-  try {
-    // If no ImagePath or it's too short, return default image
-    if (!product.ImagePath || product.ImagePath.length < 5) {
-      return IMAGES.item12;
-    }
-
-    let parsedImages: any[] = [];
-
-    // Parse ImagePath
-    if (typeof product.ImagePath === 'string') {
-      try {
-        parsedImages = JSON.parse(product.ImagePath);
-      } catch {
-        parsedImages = [product.ImagePath]; // fallback if not JSON
-      }
-    } else if (Array.isArray(product.ImagePath)) {
-      parsedImages = product.ImagePath;
-    }
-
-    // Get first image
-    let image = parsedImages.length > 0 ? parsedImages[0] : '';
-
-    if (!image || typeof image !== 'string') return IMAGES.item12;
-
-    // Fix spaces in URL
-    image = image.trim().replace(/\s/g, '%20');
-
-    // Ensure full URL
-    if (!image.startsWith('http')) {
-      image = `https://app.bmgjewellers.com${image.startsWith('/') ? '' : '/'}${image}`;
-    }
-
-    return image;
-  } catch (err) {
-    console.error('Image URL parsing error:', err);
-    return IMAGES.item12;
-  }
-}, []);
-
 
   const memoizedProducts = useMemo(() => products, [products]);
 
@@ -242,18 +255,6 @@ const getImageUrl = useCallback((product: any): string => {
         <Text style={[styles.title, { color: colors.title }]}>
           {title}
         </Text>
-        
-        {/* {showSeeAll && (
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('RecommendedProducts')}
-            style={styles.seeAllButton}
-          >
-            <Text style={[styles.seeAllText, { color: colors.title }]}>
-              See All
-            </Text>
-            <Feather name="chevron-right" size={16} color={colors.title} />
-          </TouchableOpacity>
-        )} */}
       </View>
 
       <ScrollView

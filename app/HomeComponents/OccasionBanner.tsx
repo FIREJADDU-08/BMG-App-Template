@@ -8,19 +8,19 @@ import {
     Text,
     StyleSheet,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useTheme } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
 import { getOccasionBanners } from "../Services/OccasionService";
 import { FONTS, COLORS } from "../constants/theme";
 
 const { width } = Dimensions.get("window");
-const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
 
 export default function BannerSlider() {
-    const [banners, setBanners] = useState([]);
+    const [banners, setBanners] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
     const navigation = useNavigation<any>();
+    const { colors } = useTheme();
 
     useEffect(() => {
         const fetchBanners = async () => {
@@ -29,6 +29,8 @@ export default function BannerSlider() {
                 setBanners(data || []);
             } catch (error) {
                 console.error("Failed to load banners:", error);
+                // Set empty array instead of throwing to prevent app crash
+                setBanners([]);
             } finally {
                 setLoading(false);
             }
@@ -48,19 +50,34 @@ export default function BannerSlider() {
         }
     };
 
+    // Handle image loading errors
+    const handleImageError = (item: any, index: number) => {
+        console.log("Image failed to load:", item.image_path);
+        // You could set a fallback image here if needed
+    };
+
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={[styles.loadingContainer, { backgroundColor: colors.card }]}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.loadingText}>Loading occasions...</Text>
+                <Text style={[styles.loadingText, { color: colors.text }]}>
+                    Loading occasions...
+                </Text>
             </View>
         );
     }
 
     if (!loading && banners.length === 0) {
         return (
-            <View style={styles.placeholderContainer}>
-                <Text style={styles.placeholderText}>No occasions available</Text>
+            <View
+                style={[
+                    styles.placeholderContainer,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+            >
+                <Text style={[styles.placeholderText, { color: colors.text }]}>
+                    No occasions available
+                </Text>
             </View>
         );
     }
@@ -69,8 +86,10 @@ export default function BannerSlider() {
         <View style={styles.container}>
             {/* Section Header */}
             <View style={styles.headerContainer}>
-                <Text style={styles.sectionTitle}>Shop by Occasion</Text>
-                <Text style={styles.sectionSubtitle}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Shop by Occasion
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary || COLORS.textLight }]}>
                     Find perfect jewelry for every special moment
                 </Text>
             </View>
@@ -98,15 +117,17 @@ export default function BannerSlider() {
                             {
                                 transform: [
                                     { scale: index === currentIndex ? 1 : 0.95 }
-                                ]
+                                ],
+                                backgroundColor: colors.card,
                             }
                         ]}
                     >
                         <Image
-                            source={{ uri: IMAGE_BASE_URL + item.image_path }}
+                            source={{ uri: item.image_path }}
                             style={styles.bannerImage}
                             defaultSource={require("../assets/images/item/pic14.png")}
                             resizeMode="cover"
+                            onError={() => handleImageError(item, index)}
                         />
                         <View style={styles.gradientOverlay} />
                         <View style={styles.contentContainer}>
@@ -121,7 +142,7 @@ export default function BannerSlider() {
                                 )}
                             </View>
                         </View>
-                        <View style={styles.cornerDecoration} />
+                        <View style={[styles.cornerDecoration, { borderColor: COLORS.primary }]} />
                     </TouchableOpacity>
                 )}
             />
@@ -137,7 +158,7 @@ export default function BannerSlider() {
                                 backgroundColor:
                                     index === currentIndex
                                         ? COLORS.primary
-                                        : COLORS.primaryLight,
+                                        : `${COLORS.primary}50`,
                                 width: index === currentIndex ? 24 : 8,
                             }
                         ]}
@@ -161,14 +182,12 @@ const styles = StyleSheet.create({
         ...FONTS.Marcellus,
         fontSize: 26,
         fontWeight: "600",
-        color: COLORS.text,
         textAlign: "center",
         marginBottom: 4,
     },
     sectionSubtitle: {
         ...FONTS.fontRegular,
         fontSize: 14,
-        color: COLORS.textLight,
         textAlign: "center",
         fontStyle: "italic",
     },
@@ -179,38 +198,33 @@ const styles = StyleSheet.create({
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: COLORS.backgroundLight,
         marginHorizontal: 16,
         borderRadius: 12,
     },
     loadingText: {
         ...FONTS.fontRegular,
         fontSize: 14,
-        color: COLORS.textLight,
         marginTop: 8,
     },
     placeholderContainer: {
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: COLORS.backgroundLight,
         borderRadius: 12,
         marginHorizontal: 16,
         borderWidth: 1,
-        borderColor: COLORS.border,
         borderStyle: "dashed",
     },
     placeholderText: {
         ...FONTS.fontRegular,
         fontSize: 16,
-        color: COLORS.textMuted,
     },
     slideContainer: {
         position: "relative",
         borderRadius: 12,
         overflow: "hidden",
         marginHorizontal: 4,
-        shadowColor: COLORS.shadow,
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -238,17 +252,17 @@ const styles = StyleSheet.create({
         lineHeight: 28,
         fontWeight: "600",
         marginBottom: 6,
-        textShadowColor: COLORS.shadowDark,
+        textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 3,
     },
     subtitleText: {
         ...FONTS.fontRegular,
-        color: COLORS.textLight,
+        color: COLORS.white,
         fontSize: 14,
         lineHeight: 18,
         marginBottom: 72,
-        textShadowColor: COLORS.shadow,
+        textShadowColor: "rgba(0,0,0,0.6)",
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
     },
@@ -260,7 +274,6 @@ const styles = StyleSheet.create({
         height: 24,
         borderTopWidth: 3,
         borderRightWidth: 3,
-        borderColor: COLORS.primary,
         borderTopRightRadius: 8,
     },
     paginationContainer: {

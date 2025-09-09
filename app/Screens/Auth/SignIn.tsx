@@ -14,6 +14,7 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import { IMAGES } from '../../constants/Images';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
+import { registerForPushNotificationsAsync, sendPushNotification } from "../../Services/NotificationService";
 
 type SignInScreenProps = StackScreenProps<RootStackParamList, 'SignIn'>;
 
@@ -25,13 +26,9 @@ const SignIn = ({ navigation }: SignInScreenProps) => {
   const [contactOrEmailOrUsername, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const {
-    user,
-    isLoading,
-    isError,
-    isSuccess,
-    message
-  } = useSelector((state: RootState) => state.login);
+  const { user, isLoading, isError, isSuccess, message } = useSelector(
+    (state: RootState) => state.login
+  );
 
   const handleLogin = () => {
     if (!contactOrEmailOrUsername || !password) {
@@ -41,46 +38,59 @@ const SignIn = ({ navigation }: SignInScreenProps) => {
     dispatch(login({ contactOrEmailOrUsername, password }));
   };
 
-useEffect(() => {
-  if (isSuccess && user) {
-    navigation.navigate('DrawerNavigation', { screen: 'Home' });
-    dispatch(resetLoginState());
-  }
+  useEffect(() => {
+    const handlePushNotification = async (title: string, body: string) => {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await sendPushNotification(token, title, body);
+      }
+    };
 
-  if (isError) {
-    if (message === 'Login does not exist, please sign up') {
-      Alert.alert(
-        'User Not Found',
-        message,
-        [
-          { text: 'Go to Sign Up', onPress: () => navigation.navigate('SignUp') },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
-    } else {
-      // ✅ Always show the exact API-provided message
-      Alert.alert('Login Failed', message || 'Something went wrong, please try again');
+    if (isSuccess && user) {
+      // 🔔 Send welcome push
+      handlePushNotification("Welcome 🎉", "You have logged in successfully!");
+
+      navigation.navigate('DrawerNavigation', { screen: 'Home' });
+      dispatch(resetLoginState());
     }
 
-    dispatch(resetLoginState());
-  }
-}, [isSuccess, isError, message]);
+    if (isError) {
+      // 🔔 Send error push
+      handlePushNotification("Login Failed ❌", message || "Something went wrong");
 
+      if (message === 'Login does not exist, please sign up') {
+        Alert.alert(
+          'User Not Found',
+          message,
+          [
+            { text: 'Go to Sign Up', onPress: () => navigation.navigate('SignUp') },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      } else {
+        Alert.alert('Login Failed', message || 'Something went wrong, please try again');
+      }
+
+      dispatch(resetLoginState());
+    }
+  }, [isSuccess, isError, message, user, navigation, dispatch]);
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
       <SafeAreaView style={{ backgroundColor: colors.background, flex: 1 }}>
         {/* Background and Top Image */}
         <View>
-          <View style={{
-            width: 600,
-            height: 500,
-            backgroundColor: COLORS.primary,
-            borderRadius: 250,
-            marginLeft: -95,
-            marginTop: -220,
-            overflow: 'hidden'
-          }}>
+          <View
+            style={{
+              width: 600,
+              height: 500,
+              backgroundColor: COLORS.primary,
+              borderRadius: 250,
+              marginLeft: -95,
+              marginTop: -220,
+              overflow: 'hidden',
+            }}
+          >
             <Image
               style={{
                 height: undefined,
@@ -91,14 +101,16 @@ useEffect(() => {
               }}
               source={IMAGES.item4}
             />
-            <View style={{
-              width: 600,
-              height: 500,
-              backgroundColor: '#360F00',
-              borderRadius: 250,
-              position: 'absolute',
-              opacity: 0.8
-            }} />
+            <View
+              style={{
+                width: 600,
+                height: 500,
+                backgroundColor: '#360F00',
+                borderRadius: 250,
+                position: 'absolute',
+                opacity: 0.8,
+              }}
+            />
           </View>
           <View style={{ position: 'absolute', top: 30, left: 20 }}>
             <Text style={{ ...FONTS.Marcellus, fontSize: 28, color: COLORS.white }}>
@@ -109,57 +121,78 @@ useEffect(() => {
 
         {/* Login Form */}
         <View style={[GlobalStyleSheet.container, { paddingTop: 0, marginTop: -150 }]}>
-          <View style={[{
-            shadowColor: 'rgba(195, 123, 95, 0.20)',
-            shadowOffset: { width: 2, height: 20 },
-            shadowOpacity: .1,
-            shadowRadius: 5,
-          }, Platform.OS === "ios" && {
-            backgroundColor: colors.card,
-            borderRadius: 35
-          }]}>
-            <View style={{
-              backgroundColor: colors.card,
-              padding: 30,
-              borderRadius: 40,
-              paddingBottom: 80
-            }}>
-              <Text style={{
-                ...FONTS.Marcellus,
-                fontSize: 20,
-                color: colors.title,
-                lineHeight: 28
-              }}>Welcome Back You've{"\n"}Been Missed!</Text>
+          <View
+            style={[
+              {
+                shadowColor: 'rgba(195, 123, 95, 0.20)',
+                shadowOffset: { width: 2, height: 20 },
+                shadowOpacity: 0.1,
+                shadowRadius: 5,
+              },
+              Platform.OS === 'ios' && {
+                backgroundColor: colors.card,
+                borderRadius: 35,
+              },
+            ]}
+          >
+            <View
+              style={{
+                backgroundColor: colors.card,
+                padding: 30,
+                borderRadius: 40,
+                paddingBottom: 80,
+              }}
+            >
+              <Text
+                style={{
+                  ...FONTS.Marcellus,
+                  fontSize: 20,
+                  color: colors.title,
+                  lineHeight: 28,
+                }}
+              >
+                Welcome Back You've{"\n"}Been Missed!
+              </Text>
 
               {/* Email Input */}
               <View style={{ marginBottom: 15, marginTop: 20 }}>
-                <Text style={{
-                  ...FONTS.fontRegular,
-                  fontSize: 15,
-                  color: colors.title
-                }}>Mobile No / Email <Text style={{ color: '#FF0000' }}>*</Text></Text>
+                <Text
+                  style={{
+                    ...FONTS.fontRegular,
+                    fontSize: 15,
+                    color: colors.title,
+                  }}
+                >
+                  Mobile No / Email <Text style={{ color: '#FF0000' }}>*</Text>
+                </Text>
                 <CustomInput value={contactOrEmailOrUsername} onChangeText={setEmail} />
               </View>
 
               {/* Password Input */}
               <View>
-                <Text style={{
-                  ...FONTS.fontRegular,
-                  fontSize: 15,
-                  color: colors.title
-                }}>Password<Text style={{ color: '#FF0000' }}>*</Text></Text>
+                <Text
+                  style={{
+                    ...FONTS.fontRegular,
+                    fontSize: 15,
+                    color: colors.title,
+                  }}
+                >
+                  Password<Text style={{ color: '#FF0000' }}>*</Text>
+                </Text>
                 <CustomInput type={'password'} value={password} onChangeText={setPassword} />
                 <TouchableOpacity
                   style={{ position: 'absolute', bottom: -25, left: 0 }}
                   onPress={() => navigation.navigate('ForgatPassword')}
                 >
-                  <Text style={{
-                    ...FONTS.fontRegular,
-                    fontSize: 15,
-                    color: colors.title,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.title
-                  }}>
+                  <Text
+                    style={{
+                      ...FONTS.fontRegular,
+                      fontSize: 15,
+                      color: colors.title,
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.title,
+                    }}
+                  >
                     Forgot Password?
                   </Text>
                 </TouchableOpacity>
@@ -183,18 +216,24 @@ useEffect(() => {
 
         {/* Social Buttons */}
         <View style={[GlobalStyleSheet.container, { paddingHorizontal: 20, flex: 1 }]}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 30
-          }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 30,
+            }}
+          >
             <View style={{ height: 1, flex: 1, backgroundColor: colors.title }} />
-            <Text style={{
-              ...FONTS.fontMedium,
-              color: colors.text,
-              marginHorizontal: 15,
-              fontSize: 13
-            }}>Or continue with</Text>
+            <Text
+              style={{
+                ...FONTS.fontMedium,
+                color: colors.text,
+                marginHorizontal: 15,
+                fontSize: 13,
+              }}
+            >
+              Or continue with
+            </Text>
             <View style={{ height: 1, flex: 1, backgroundColor: colors.title }} />
           </View>
           <View>
@@ -208,7 +247,7 @@ useEffect(() => {
             </View>
             <View>
               <SocialBtn
-                icon={<FontAwesome name='apple' size={20} color={colors.title} />}
+                icon={<FontAwesome name="apple" size={20} color={colors.title} />}
                 rounded
                 color={theme.dark ? '#000' : '#FFFFFF'}
                 text={'Sign in with Apple'}
@@ -221,12 +260,16 @@ useEffect(() => {
         <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', flex: 1 }}>
           <Text style={{ ...FONTS.fontRegular, fontSize: 15, color: colors.title }}>Not a member?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-            <Text style={{
-              ...FONTS.fontMedium,
-              borderBottomWidth: 1,
-              borderBottomColor: colors.title,
-              color: colors.title
-            }}> Create an account</Text>
+            <Text
+              style={{
+                ...FONTS.fontMedium,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.title,
+                color: colors.title,
+              }}
+            >
+              {' '}Create an account
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

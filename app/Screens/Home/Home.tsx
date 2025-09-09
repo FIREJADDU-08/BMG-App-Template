@@ -70,7 +70,7 @@ const BudgetCategories = createLazyComponent(() => import('../../HomeComponents/
 const OccasionBanner = createLazyComponent(() => import('../../HomeComponents/OccasionBanner'), 'OccasionBanner');
 const OfferBanner = createLazyComponent(() => import('../../HomeComponents/OfferBanner'), 'OfferBanner');
 const RingCollection = createLazyComponent(() => import('../../HomeComponents/RingCollection'), 'RingCollection');
-
+const Footer = createLazyComponent(() => import('../../HomeComponents/Footer'), 'Footer');
 // Constants
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SEARCH_DEBOUNCE_DELAY = 500;
@@ -924,6 +924,8 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
         <LazyWrapper name="Great Savings">
           <GreatSavingsSection navigation={navigation} />
         </LazyWrapper> 
+        
+        <Footer />    
 
         {/* Add scroll to top button */}
         {/* <TouchableOpacity 

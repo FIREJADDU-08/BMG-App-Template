@@ -13,9 +13,9 @@ import { trackOrder } from '../../Services/OrderTrackService';
 
 type TrackOrderScreenProps = StackScreenProps<RootStackParamList, 'Trackorder'>;
 
-interface StatusHistoryItem {
-  status: string;
+interface TimelineItem {
   updated_at: string;
+  label: string;
   remarks?: string;
 }
 
@@ -32,12 +32,13 @@ interface OrderItem {
 
 interface OrderData {
   current_status: string;
-  history: StatusHistoryItem[];
+  timeline: TimelineItem[];
   order_id: string;
   items: OrderItem[];
+  canCancel?: boolean;
 }
 
-interface TimelineItem {
+interface DisplayTimelineItem {
   title: string;
   description: string;
   date: string;
@@ -91,32 +92,13 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
     Alert.alert(title, message, [{ text: 'OK', style: 'default' }]);
   };
 
-  // Create clean timeline based on actual order flow
-  const createCleanTimeline = (): TimelineItem[] => {
-    if (!orderData?.history) return [];
+  // Create timeline based on new API structure
+  const createTimeline = (): DisplayTimelineItem[] => {
+    if (!orderData?.timeline) return [];
 
-    const timeline: TimelineItem[] = [];
-    const history = [...orderData.history].sort((a, b) => 
-      new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
-    );
-
+    const timeline: DisplayTimelineItem[] = [];
     const currentStatus = orderData.current_status.toUpperCase();
-    const isRTO = currentStatus.includes('RTO');
-    const isDeliveryFailed = currentStatus === 'DELIVERY_FAILED';
-    const isCancelled = ['CANCELLED', 'RETURNED', 'REFUNDED'].includes(currentStatus);
-
-    // Find key milestones from history
-    const pendingItem = history.find(h => h.status === 'PENDING');
-    const placedItem = history.find(h => h.status === 'PLACED');
-    const processingItem = history.find(h => h.status === 'IN_PROCESSING');
-    const packedItem = history.find(h => h.status === 'PACKED' && h.remarks !== 'DTDC update: ');
-    const shippedItem = history.find(h => ['SHIPPED', 'SHIPPING'].includes(h.status));
-    const bookedItem = history.find(h => h.status === 'Booked');
-    const outForDeliveryItem = history.find(h => h.status === 'OUT_FOR_DELIVERY');
-    const deliveredItem = history.find(h => h.status === 'DELIVERED');
-    const deliveryFailedItems = history.filter(h => h.status === 'DELIVERY_FAILED');
-    const rtoItems = history.filter(h => h.status.includes('RTO'));
-
+    
     const formatDate = (dateString: string) => {
       const date = new Date(dateString);
       return date.toLocaleDateString('en-IN', { 
@@ -129,118 +111,86 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
       });
     };
 
-    const getItemStatus = (step: string): 'completed' | 'current' | 'pending' | 'failed' | 'cancelled' => {
-      if (isCancelled) return 'cancelled';
-      
-      const stepOrder = ['PENDING', 'PLACED', 'IN_PROCESSING', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-      const currentIndex = stepOrder.findIndex(s => s === currentStatus) || 
-                          (isRTO ? 4 : (isDeliveryFailed ? 5 : -1));
-      const stepIndex = stepOrder.findIndex(s => s === step);
-      
-      if (isRTO && step === 'OUT_FOR_DELIVERY') return 'failed';
-      if (stepIndex < currentIndex) return 'completed';
-      if (stepIndex === currentIndex) return 'current';
-      return 'pending';
-    };
-
-    // 1. Order Confirmed
-    if (pendingItem || placedItem) {
-      const item = placedItem || pendingItem;
+    // Process existing timeline items from API
+    orderData.timeline.forEach((item, index) => {
       timeline.push({
-        title: 'Order Confirmed',
-        description: 'Your order has been placed.',
+        title: item.label,
+        description: item.remarks || '',
         date: formatDate(item.updated_at),
-        status: getItemStatus('PLACED')
-      });
-    }
-
-    // 2. Processing
-    if (processingItem) {
-      timeline.push({
-        title: 'Seller has processed your order',
-        description: processingItem.remarks || 'Your order is being prepared.',
-        date: formatDate(processingItem.updated_at),
-        status: getItemStatus('IN_PROCESSING')
-      });
-    }
-
-    // 3. Packed
-    if (packedItem) {
-      timeline.push({
-        title: 'Your item has been picked up by delivery partner',
-        description: 'Package is ready for shipment.',
-        date: formatDate(packedItem.updated_at),
-        status: getItemStatus('PACKED')
-      });
-    }
-
-    // 4. Shipped
-    if (shippedItem || bookedItem) {
-      const item = shippedItem || bookedItem;
-      timeline.push({
-        title: 'Shipped',
-        description: `Your item has been shipped.`,
-        date: formatDate(item.updated_at),
-        status: getItemStatus('SHIPPED')
-      });
-    }
-
-    // 5. Out for Delivery (with failure handling)
-    if (outForDeliveryItem) {
-      const hasMultipleAttempts = deliveryFailedItems.length > 0;
-      
-      timeline.push({
-        title: 'Out For Delivery',
-        description: hasMultipleAttempts 
-          ? `Multiple delivery attempts made.`
-          : 'Your item is out for delivery.',
-        date: formatDate(outForDeliveryItem.updated_at),
-        status: getItemStatus('OUT_FOR_DELIVERY')
-      });
-    }
-
-    // 6. Delivery Status
-    if (deliveredItem) {
-      timeline.push({
-        title: 'Delivered',
-        description: 'Your item has been delivered.',
-        date: formatDate(deliveredItem.updated_at),
         status: 'completed'
       });
-    } else if (isRTO) {
-      const latestRTO = rtoItems[rtoItems.length - 1];
-      let rtoTitle = 'Return Initiated';
-      let rtoDescription = 'Your order is being returned due to delivery issues.';
-      
-      if (currentStatus === 'RTO OUT FOR DELIVERY') {
-        rtoTitle = 'Returning to Seller';
-        rtoDescription = 'Package is being returned to the seller.';
-      } else if (currentStatus === 'RTO DELIVERED') {
-        rtoTitle = 'Returned';
-        rtoDescription = 'Package has been returned to the seller.';
+    });
+
+    // Define the complete order flow
+    const orderFlow = [
+      { key: 'ORDER_CONFIRMED', title: 'Order Confirmed', desc: 'Your order has been placed successfully.' },
+      { key: 'ORDER_PROCESSED', title: 'Order Processed', desc: 'Your order has been processed.' },
+      { key: 'ORDER_PACKED', title: 'Order Packed', desc: 'Your order has been packed.' },
+      { key: 'READY_TO_SHIP', title: 'Ready to Ship', desc: 'Your order is ready to be shipped.' },
+      { key: 'SHIPPED', title: 'Shipped', desc: 'Your order has been shipped.' },
+      { key: 'OUT_FOR_DELIVERY', title: 'Out for Delivery', desc: 'Your order is out for delivery.' },
+      { key: 'DELIVERED', title: 'Delivered', desc: 'Your order has been delivered successfully.' }
+    ];
+
+    // Find current step index
+    const getCurrentStepIndex = () => {
+      switch (currentStatus) {
+        case 'ORDER_CONFIRMED': return 0;
+        case 'ORDER_PROCESSED': return 1;
+        case 'ORDER_PACKED': return 2;
+        case 'READY_TO_SHIP': return 3;
+        case 'SHIPPED': return 4;
+        case 'OUT_FOR_DELIVERY': return 5;
+        case 'DELIVERED': return 6;
+        default: return orderData.timeline.length - 1; // Default to last completed step
       }
-      
-      timeline.push({
-        title: rtoTitle,
-        description: rtoDescription,
-        date: latestRTO ? formatDate(latestRTO.updated_at) : '',
-        status: 'cancelled'
-      });
-    } else if (deliveryFailedItems.length > 0) {
-      const latestFailed = deliveryFailedItems[deliveryFailedItems.length - 1];
-      let failureReason = 'Delivery attempt failed.';
-      
-      if (latestFailed.remarks?.includes('ADDRESS INCOMPLETE')) {
-        failureReason = 'Delivery failed: Address incomplete or wrong.';
-      } else if (latestFailed.remarks?.includes('RECEIVER NOT AVAILABLE')) {
-        failureReason = 'Delivery failed: Receiver not available.';
+    };
+
+    const currentStepIndex = getCurrentStepIndex();
+
+    // Add pending steps if needed
+    const completedSteps = orderData.timeline.length;
+    
+    if (completedSteps < orderFlow.length) {
+      // Add current step if it's not in completed timeline
+      if (currentStepIndex >= completedSteps) {
+        timeline.push({
+          title: orderFlow[currentStepIndex].title,
+          description: orderFlow[currentStepIndex].desc,
+          date: '',
+          status: 'current'
+        });
+        
+        // Add remaining pending steps
+        for (let i = currentStepIndex + 1; i < orderFlow.length; i++) {
+          timeline.push({
+            title: orderFlow[i].title,
+            description: orderFlow[i].desc,
+            date: '',
+            status: 'pending'
+          });
+        }
+      } else {
+        // Add remaining pending steps
+        for (let i = completedSteps; i < orderFlow.length; i++) {
+          const status = i === currentStepIndex ? 'current' : 'pending';
+          timeline.push({
+            title: orderFlow[i].title,
+            description: orderFlow[i].desc,
+            date: '',
+            status: status
+          });
+        }
       }
-      
-      timeline.push({
-        title: 'Delivery Attempted',
-        description: `${failureReason} Please check again after some time for further updates.`,
-        date: formatDate(latestFailed.updated_at),
-        status: 'failed'
+    }
+
+    // Handle special cases (cancelled, failed, etc.)
+    const isProblematicStatus = ['CANCELLED', 'RETURNED', 'REFUNDED', 'DELIVERY_FAILED'].includes(currentStatus);
+    if (isProblematicStatus) {
+      timeline.forEach(item => {
+        if (item.status === 'pending') {
+          item.status = 'cancelled';
+        }
       });
     }
 
@@ -265,34 +215,21 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
 
     const status = orderData.current_status.toUpperCase();
     
-    if (status.includes('RTO')) {
-      return { text: 'Being Returned', color: '#FF8C00' };
-    }
-    if (status === 'DELIVERY_FAILED') {
-      return { text: 'Delivery Failed', color: COLORS.danger };
-    }
-    if (['CANCELLED', 'RETURNED', 'REFUNDED'].includes(status)) {
-      return { text: 'Cancelled', color: COLORS.danger };
-    }
-    if (status === 'DELIVERED') {
-      return { text: 'Delivered', color: COLORS.success };
-    }
-    
-    const statusMap: { [key: string]: string } = {
-      'PENDING': 'Order Confirmed',
-      'PLACED': 'Order Placed',
-      'IN_PROCESSING': 'Processing',
-      'PACKED': 'Packed',
-      'SHIPPED': 'Shipped',
-      'SHIPPING': 'Shipped',
-      'BOOKED': 'Shipped',
-      'OUT_FOR_DELIVERY': 'Out for Delivery'
+    const statusMap: { [key: string]: { text: string; color: string } } = {
+      'ORDER_CONFIRMED': { text: 'Order Confirmed', color: COLORS.success },
+      'ORDER_PROCESSED': { text: 'Processing', color: COLORS.primary },
+      'ORDER_PACKED': { text: 'Packed', color: COLORS.primary },
+      'READY_TO_SHIP': { text: 'Ready to Ship', color: COLORS.primary },
+      'SHIPPED': { text: 'Shipped', color: COLORS.primary },
+      'OUT_FOR_DELIVERY': { text: 'Out for Delivery', color: COLORS.primary },
+      'DELIVERED': { text: 'Delivered', color: COLORS.success },
+      'CANCELLED': { text: 'Cancelled', color: COLORS.danger },
+      'RETURNED': { text: 'Returned', color: COLORS.danger },
+      'REFUNDED': { text: 'Refunded', color: COLORS.danger },
+      'DELIVERY_FAILED': { text: 'Delivery Failed', color: COLORS.danger },
     };
     
-    return { 
-      text: statusMap[status] || status, 
-      color: COLORS.primary 
-    };
+    return statusMap[status] || { text: status, color: COLORS.primary };
   };
 
   const getStatusIcon = (status: 'completed' | 'current' | 'pending' | 'failed' | 'cancelled') => {
@@ -342,7 +279,7 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
   }
 
   const currentStatusInfo = getCurrentStatusInfo();
-  const timeline = createCleanTimeline();
+  const timeline = createTimeline();
   const displayedProducts = showAllProducts ? orderData.items : orderData.items.slice(0, 2);
 
   return (
@@ -382,49 +319,70 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
             </View>
           </View>
 
-          {/* Timeline - Flipkart Style */}
+          {/* Cancel Order Button */}
+          {orderData.canCancel && (
+            <TouchableOpacity 
+              style={[styles.cancelButton, { backgroundColor: COLORS.danger }]}
+              onPress={() => showAlert('Cancel Order', 'Are you sure you want to cancel this order?')}
+            >
+              <Icon name="cancel" size={20} color={COLORS.white} />
+              <Text style={[styles.cancelButtonText, { color: COLORS.white }]}>Cancel Order</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Timeline */}
           <View style={[styles.timelineContainer, { backgroundColor: colors.card }]}>
-            {timeline.map((item, index) => (
-              <View key={index} style={styles.timelineItem}>
-                <View style={styles.timelineLeft}>
-                  <View style={[
-                    styles.timelineIcon,
-                    { backgroundColor: getStatusColor(item.status) }
-                  ]}>
-                    <Icon 
-                      name={getStatusIcon(item.status)} 
-                      size={16} 
-                      color={item.status === 'pending' ? COLORS.gray : COLORS.white} 
-                    />
-                  </View>
-                  {!item.isLast && (
+            <Text style={[styles.timelineHeader, { color: colors.title }]}>Order Timeline</Text>
+            
+            {timeline.length === 0 ? (
+              <Text style={[styles.noTimelineText, { color: colors.text }]}>
+                No timeline information available
+              </Text>
+            ) : (
+              timeline.map((item, index) => (
+                <View key={index} style={styles.timelineItem}>
+                  <View style={styles.timelineLeft}>
                     <View style={[
-                      styles.timelineLine,
-                      { backgroundColor: colors.border }
-                    ]} />
-                  )}
+                      styles.timelineIcon,
+                      { backgroundColor: getStatusColor(item.status) }
+                    ]}>
+                      <Icon 
+                        name={getStatusIcon(item.status)} 
+                        size={16} 
+                        color={item.status === 'pending' ? COLORS.gray : COLORS.white} 
+                      />
+                    </View>
+                    {!item.isLast && (
+                      <View style={[
+                        styles.timelineLine,
+                        { backgroundColor: item.status === 'pending' ? colors.border : getStatusColor(item.status) }
+                      ]} />
+                    )}
+                  </View>
+                  
+                  <View style={styles.timelineContent}>
+                    <Text style={[
+                      styles.timelineTitle,
+                      { color: item.status === 'pending' ? colors.text : getStatusColor(item.status) }
+                    ]}>
+                      {item.title}
+                    </Text>
+                    {item.date ? (
+                      <Text style={[styles.timelineDate, { color: colors.text }]}>
+                        {item.date}
+                      </Text>
+                    ) : null}
+                    <Text style={[styles.timelineDesc, { color: colors.text }]}>
+                      {item.description}
+                    </Text>
+                  </View>
                 </View>
-                
-                <View style={styles.timelineContent}>
-                  <Text style={[
-                    styles.timelineTitle,
-                    { color: getStatusColor(item.status) }
-                  ]}>
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.timelineDate, { color: colors.text }]}>
-                    {item.date}
-                  </Text>
-                  <Text style={[styles.timelineDesc, { color: colors.text }]}>
-                    {item.description}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              ))
+            )}
           </View>
 
           {/* Contact Support for issues */}
-          {(currentStatusInfo.text === 'Delivery Failed' || currentStatusInfo.text === 'Being Returned') && (
+          {(currentStatusInfo.text === 'Delivery Failed' || currentStatusInfo.text === 'Return in Progress') && (
             <TouchableOpacity 
               style={[styles.supportButton, { backgroundColor: COLORS.primary }]}
               onPress={() => showAlert('Customer Support', 'Please contact our support team for assistance with your order delivery.')}
@@ -509,6 +467,19 @@ const styles = StyleSheet.create({
     ...FONTS.fontSemiBold,
     fontSize: 11,
   },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  cancelButtonText: {
+    ...FONTS.fontSemiBold,
+    fontSize: 14,
+  },
   timelineContainer: {
     padding: 16,
     borderRadius: 8,
@@ -518,6 +489,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  timelineHeader: {
+    ...FONTS.fontSemiBold,
+    fontSize: 18,
+    marginBottom: 16,
+  },
+  noTimelineText: {
+    ...FONTS.fontRegular,
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   timelineItem: {
     flexDirection: 'row',
@@ -535,6 +517,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    zIndex: 2,
   },
   timelineLine: {
     flex: 1,

@@ -10,11 +10,10 @@ import {
 } from "react-native";
 import { useNavigation, useTheme } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
-import { getOfferBanners } from "../Services/OfferBannerService";
+import { getOfferBanners, getImageUrl } from "../Services/OfferBannerService";
 import { FONTS, COLORS } from "../constants/theme";
 
 const { width } = Dimensions.get("window");
-const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
 
 export default function BannerSlider() {
     const [banners, setBanners] = useState<any[]>([]);
@@ -30,6 +29,8 @@ export default function BannerSlider() {
                 setBanners(data || []);
             } catch (error) {
                 console.error("Failed to load banners:", error);
+                // Set empty array instead of throwing to prevent app crash
+                setBanners([]);
             } finally {
                 setLoading(false);
             }
@@ -37,20 +38,6 @@ export default function BannerSlider() {
 
         fetchBanners();
     }, []);
-
-    const getImageUrl = (path: string) => {
-        if (!path) return `${IMAGE_BASE_URL}/fallback-image.jpg`;
-
-        if (path.startsWith("http")) return path;
-
-        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-        const lastSlashIndex = normalizedPath.lastIndexOf("/");
-        const directory = normalizedPath.substring(0, lastSlashIndex + 1);
-        const filename = normalizedPath.substring(lastSlashIndex + 1);
-        const encodedFilename = encodeURIComponent(filename);
-
-        return `${IMAGE_BASE_URL}${directory}${encodedFilename}`;
-    };
 
     const handlePress = (item: any) => {
         if (item.item_name && item.sub_item_name) {
@@ -134,12 +121,16 @@ export default function BannerSlider() {
                     >
                         <Image
                             source={{
-                                uri: getImageUrl(item.image_path),
+                                uri: item.image_path,
                                 cache: "force-cache",
                             }}
                             style={styles.bannerImage}
                             defaultSource={require("../assets/images/item/pic14.png")}
                             resizeMode="cover"
+                            onError={(e) => {
+                                console.log("Image failed to load:", item.image_path);
+                                // You could set a fallback image here if needed
+                            }}
                         />
 
                         <View style={styles.gradientOverlay} />

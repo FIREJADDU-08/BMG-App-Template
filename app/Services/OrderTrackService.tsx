@@ -6,7 +6,7 @@ export const trackOrder = async (orderId: string) => {
     const token = await AsyncStorage.getItem('user_token');
   try {
     const response = await fetch(
-      `${API_BASE_URL}/order/track-order?orderId=${orderId}`,
+      `${API_BASE_URL}/order/track/user?orderId=${orderId}`,
       {
         method: 'GET',
         headers: {

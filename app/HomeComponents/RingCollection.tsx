@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
-  SafeAreaView,
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -70,114 +69,110 @@ const RingsPage = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Animated Header */}
-        <Animated.View style={[styles.headerContainer, { opacity: fadeAnim }]}>
-          <Text style={styles.header}>Explore Our Rings</Text>
-        </Animated.View>
-        
-        {/* Content - Images */}
-        <ScrollView 
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* First row with two images */}
-          <View style={styles.row}>
-            <Animated.View 
-              style={[
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-                styles.animationWrapper
-              ]}
+    <View style={styles.container}>
+      {/* Animated Header */}
+      <Animated.View style={[styles.headerContainer, { opacity: fadeAnim }]}>
+        <Text style={styles.header}>Explore Our Rings</Text>
+      </Animated.View>
+      
+      {/* Content - Images */}
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        // Remove extra bottom inset
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        {/* First row with two images */}
+        <View style={styles.row}>
+          <Animated.View 
+            style={[
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+              styles.animationWrapper
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.imageContainer, styles.halfWidth]}
+              onPress={() => handleImagePress(ringImages[0].itemName, ringImages[0].subItemName)}
+              activeOpacity={0.9}
             >
-              <TouchableOpacity
-                style={[styles.imageContainer, styles.halfWidth]}
-                onPress={() => handleImagePress(ringImages[0].itemName, ringImages[0].subItemName)}
-                activeOpacity={0.9}
-              >
-                <Image
-                  source={ringImages[0].image}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-                <View style={styles.imageOverlay}>
-                  <Text style={styles.imageText}>{ringImages[0].subItemName}</Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-            
-            <Animated.View 
-              style={[
-                { 
-                  opacity: fadeAnim, 
-                  transform: [{ translateY: slideAnim }],
-                },
-                styles.animationWrapper
-              ]}
-            >
-              <TouchableOpacity
-                style={[styles.imageContainer, styles.halfWidth, styles.secondImage]}
-                onPress={() => handleImagePress(ringImages[1].itemName, ringImages[1].subItemName)}
-                activeOpacity={0.9}
-              >
-                <Image
-                  source={ringImages[1].image}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-                <View style={styles.imageOverlay}>
-                  <Text style={styles.imageText}>{ringImages[1].subItemName}</Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
+              <Image
+                source={ringImages[0].image}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              <View style={styles.imageOverlay}>
+                <Text style={styles.imageText}>{ringImages[0].subItemName}</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
           
-          {/* Second row with one centered image */}
-          <View style={styles.row}>
-            <Animated.View 
-              style={[
-                { 
-                  opacity: fadeAnim, 
-                  transform: [{ translateY: slideAnim }] 
-                },
-                styles.animationWrapper
-              ]}
+          <Animated.View 
+            style={[
+              { 
+                opacity: fadeAnim, 
+                transform: [{ translateY: slideAnim }],
+              },
+              styles.animationWrapper
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.imageContainer, styles.halfWidth, styles.secondImage]}
+              onPress={() => handleImagePress(ringImages[1].itemName, ringImages[1].subItemName)}
+              activeOpacity={0.9}
             >
-              <TouchableOpacity
-                style={[styles.imageContainer, styles.fullWidth]}
-                onPress={() => handleImagePress(ringImages[2].itemName, ringImages[2].subItemName)}
-                activeOpacity={0.9}
-              >
-                <Image
-                  source={ringImages[2].image}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-                <View style={styles.imageOverlay}>
-                  <Text style={styles.imageText}>{ringImages[2].subItemName}</Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </ScrollView>
-      </View>
-      </View>
-
+              <Image
+                source={ringImages[1].image}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              <View style={styles.imageOverlay}>
+                <Text style={styles.imageText}>{ringImages[1].subItemName}</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+        
+        {/* Second row with one centered image */}
+        <View style={styles.row}>
+          <Animated.View 
+            style={[
+              { 
+                opacity: fadeAnim, 
+                transform: [{ translateY: slideAnim }] 
+              },
+              styles.animationWrapper
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.imageContainer, styles.fullWidth]}
+              onPress={() => handleImagePress(ringImages[2].itemName, ringImages[2].subItemName)}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={ringImages[2].image}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              <View style={styles.imageOverlay}>
+                <Text style={styles.imageText}>{ringImages[2].subItemName}</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    // marginBottom: -56,
-  },
   container: {
     flex: 1,
+    backgroundColor: '#fafafa',
   },
   headerContainer: {
     padding: 16,
     alignItems: 'center',
+    paddingTop: 20, // Added top padding for better spacing
   },
   header: {
     fontSize: 22,
@@ -187,12 +182,13 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 16, // Reduced from 32 to eliminate extra space
+    paddingBottom: 16,
+    // Removed extra padding that was causing bottom space
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16, // Reduced from 24
+    marginBottom: 16,
   },
   animationWrapper: {
     flex: 1,
@@ -208,17 +204,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   halfWidth: {
-    width: (width - 40) / 2,
+    width: (width - 40) / 2, // 16px padding * 2 + 8px margin = 40px
   },
   secondImage: {
-    marginLeft: 8, // Reduced from 16
+    marginLeft: 8,
   },
   fullWidth: {
-    width: width - 32,
+    width: width - 32, // 16px padding * 2 = 32px
   },
   image: {
     width: '100%',
-    height: 200, // Reduced from 240 for better proportion
+    height: 200,
   },
   imageOverlay: {
     position: 'absolute',
@@ -231,7 +227,7 @@ const styles = StyleSheet.create({
   },
   imageText: {
     color: '#000000',
-    fontSize: 16, // Slightly reduced
+    fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: 0.5,
