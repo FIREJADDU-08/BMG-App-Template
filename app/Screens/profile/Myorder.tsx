@@ -10,16 +10,19 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { COLORS, FONTS, SIZES } from '../../constants/theme';
 import { GlobalStyleSheet } from '../../constants/StyleSheet';
 import Header from '../../layout/Header';
 import { LinearGradient } from 'expo-linear-gradient';
-import CardStyle3 from '../../components/Card/CardStyle3';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
 import { fetchOrderHistory } from '../../Services/OrderDetailService';
 import { IMAGES } from '../../constants/Images';
+
+const { width } = Dimensions.get('window');
 
 type MyorderScreenProps = StackScreenProps<RootStackParamList, 'Myorder'>;
 
@@ -66,7 +69,7 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
 
-  const FALLBACK_IMAGE = IMAGES.item14; // ✅ local asset fallback
+  const FALLBACK_IMAGE = IMAGES.item14;
 
   /** Load Orders API */
   const loadOrders = useCallback(async (forceRefresh: boolean = false) => {
@@ -120,49 +123,92 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     });
   };
 
-  /** Improved Image source helper */
-  const renderImageSource = (
-    imageUrls?: string[] | string
-  ): { uri?: string } | number => {
-    // If no image URLs provided, return fallback
-    if (!imageUrls) return FALLBACK_IMAGE;
+  /** Enhanced Image source helper */
+/** Enhanced Image source helper */
+const renderImageSource = (
+  imageUrls?: string[] | string
+): { uri?: string } | number => {
+  if (!imageUrls) return FALLBACK_IMAGE;
 
-    // Handle string input
+  let imageArray: string[] = [];
+
+  // Parse the imagePath field which is a JSON string array
+  try {
     if (typeof imageUrls === 'string') {
-      // Empty string case
-      if (!imageUrls.trim()) return FALLBACK_IMAGE;
-      
-      // Already a full URL
-      if (imageUrls.startsWith('http')) {
-        return { uri: imageUrls };
+      // Check if it's a JSON array string
+      if (imageUrls.trim().startsWith('[') && imageUrls.trim().endsWith(']')) {
+        const parsed = JSON.parse(imageUrls);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          imageArray = parsed;
+        } else if (typeof parsed === 'string') {
+          imageArray = [parsed];
+        }
+      } else {
+        // It's a regular string path
+        imageArray = [imageUrls];
       }
-      
-      // Relative path - construct full URL
-      return { uri: `https://app.bmgjewellers.com${imageUrls.startsWith('/') ? '' : '/'}${imageUrls}` };
+    } else if (Array.isArray(imageUrls)) {
+      imageArray = imageUrls;
     }
-
-    // Handle array input
-    if (Array.isArray(imageUrls) && imageUrls.length > 0) {
-      const first = imageUrls[0];
-      
-      // Empty string in array
-      if (!first || !first.trim()) return FALLBACK_IMAGE;
-      
-      // Already a full URL
-      if (first.startsWith('http')) {
-        return { uri: first };
-      }
-      
-      // Relative path in array
-      return { uri: `https://app.bmgjewellers.com${first.startsWith('/') ? '' : '/'}${first}` };
+  } catch (error) {
+    console.error('Error parsing image URLs:', error);
+    // If parsing fails, try to use the raw string
+    if (typeof imageUrls === 'string') {
+      imageArray = [imageUrls];
     }
+  }
 
-    // Default fallback
-    return FALLBACK_IMAGE;
+  // If we have no valid images after parsing, return fallback
+  if (imageArray.length === 0) return FALLBACK_IMAGE;
+
+  // Get the first valid image URL
+  const firstImage = imageArray[0];
+  
+  if (!firstImage || !firstImage.trim()) return FALLBACK_IMAGE;
+  
+  // Clean up the URL - remove any quotes or brackets that might remain
+  let cleanedUrl = firstImage.replace(/^["'\[]+|["'\]]+$/g, '').trim();
+  
+  if (!cleanedUrl) return FALLBACK_IMAGE;
+  
+  // If it's already a full URL, use it directly
+  if (cleanedUrl.startsWith('http')) {
+    return { uri: cleanedUrl };
+  }
+  
+  // If it's a relative path, prepend the base URL
+  // Remove any leading slashes to avoid double slashes
+  const normalizedPath = cleanedUrl.startsWith('/') ? cleanedUrl.substring(1) : cleanedUrl;
+  return { uri: `https://app.bmgjewellers.com/${normalizedPath}` };
+};
+  /** Get status color based on order status */
+  const getStatusColor = (status: string) => {
+    const statusUpper = status?.toUpperCase();
+    switch (statusUpper) {
+      case 'PENDING':
+      case 'PROCESSING':
+        return '#FF9500';
+      case 'SHIPPED':
+      case 'OUT_FOR_DELIVERY':
+        return '#007AFF';
+      case 'DELIVERED':
+      case 'COMPLETED':
+        return '#34C759';
+      case 'CANCELLED':
+        return '#FF3B30';
+      default:
+        return COLORS.primary;
+    }
   };
 
-  // Custom Card Component with better image handling
-  const CustomOrderCard = ({ 
+  /** Get status background color */
+  const getStatusBgColor = (status: string) => {
+    const statusColor = getStatusColor(status);
+    return statusColor + '15'; // Add transparency
+  };
+
+  /** Modern Order Card Component */
+  const ModernOrderCard = ({ 
     id, 
     title, 
     price, 
@@ -170,10 +216,12 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     status, 
     offer, 
     onPress, 
-    btntitel 
+    btntitel,
+    itemCount 
   }: any) => {
     const [imageError, setImageError] = useState(false);
     const [imageLoading, setImageLoading] = useState(true);
+    const scaleAnim = useRef(new Animated.Value(1)).current;
     
     const handleImageError = () => {
       setImageError(true);
@@ -184,140 +232,290 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
       setImageLoading(false);
     };
 
+    const onPressIn = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    };
+
+    const onPressOut = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    };
+
     return (
-      <TouchableOpacity
+      <Animated.View
         style={{
-          backgroundColor: colors.card,
-          borderRadius: SIZES.radius,
-          marginBottom: 15,
-          padding: 15,
-          flexDirection: 'row',
-          alignItems: 'center',
+          transform: [{ scale: scaleAnim }],
+          marginHorizontal: 16,
+          marginBottom: 16,
         }}
-        onPress={onPress}
       >
-        {/* Image Container */}
-        <View
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: SIZES.radius,
-            backgroundColor: colors.background,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 15,
-            overflow: 'hidden',
-          }}
-        >
-          {imageLoading && (
-            <ActivityIndicator size="small" color={COLORS.primary} />
-          )}
-          
-          {(imageError || !image) ? (
-            <View
-              style={{
-                width: '100%',
-                height: '100%',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: colors.background,
-              }}
-            >
-              <Text
-                style={{
-                  ...FONTS.fontXs,
-                  color: colors.text,
-                  textAlign: 'center',
-                }}
-              >
-                No Image
-              </Text>
-            </View>
-          ) : (
-            <Image
-              source={image}
-              style={{
-                width: '100%',
-                height: '100%',
-                resizeMode: 'cover',
-              }}
-              onError={handleImageError}
-              onLoad={handleImageLoad}
-            />
-          )}
-        </View>
-
-        {/* Content */}
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              ...FONTS.fontMedium,
-              fontSize: 16,
-              color: colors.title,
-              marginBottom: 5,
-            }}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          
-          <Text
-            style={{
-              ...FONTS.fontMedium,
-              color: COLORS.primary,
-              marginBottom: 5,
-            }}
-          >
-            {price}
-          </Text>
-          
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text
-              style={{
-                ...FONTS.fontXs,
-                color: colors.text,
-              }}
-            >
-              {status}
-            </Text>
-            
-            <Text
-              style={{
-                ...FONTS.fontXs,
-                color: colors.text,
-              }}
-            >
-              {offer}
-            </Text>
-          </View>
-        </View>
-
-        {/* Button */}
         <TouchableOpacity
           style={{
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            backgroundColor: COLORS.primary,
-            borderRadius: SIZES.radius,
+            backgroundColor: colors.card,
+            borderRadius: 20,
+            padding: 20,
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            shadowColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: Platform.OS === 'ios' ? 1 : 0.8,
+            shadowRadius: 12,
+            elevation: 8,
+            borderWidth: 1,
+            borderColor: colors.border || 'rgba(0,0,0,0.05)',
           }}
           onPress={onPress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          activeOpacity={0.9}
         >
-          <Text
+          {/* Enhanced Image Container */}
+          <View
             style={{
-              ...FONTS.fontXs,
-              color: COLORS.white,
+              width: 90,
+              height: 90,
+              borderRadius: 16,
+              backgroundColor: colors.background,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 16,
+              overflow: 'hidden',
+              shadowColor: 'rgba(0,0,0,0.1)',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 1,
+              shadowRadius: 4,
+              elevation: 2,
             }}
           >
-            {btntitel}
-          </Text>
+            {imageLoading && !imageError && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  zIndex: 1,
+                }}
+              >
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              </View>
+            )}
+            
+            {(imageError || !image) ? (
+              <LinearGradient
+                colors={[COLORS.primary + '20', COLORS.primary + '10']}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    ...FONTS.fontSm,
+                    color: COLORS.primary,
+                    textAlign: 'center',
+                    fontWeight: '600',
+                  }}
+                >
+                  📦
+                </Text>
+                <Text
+                  style={{
+                    ...FONTS.fontXs,
+                    color: COLORS.primary,
+                    textAlign: 'center',
+                    marginTop: 4,
+                  }}
+                >
+                  No Image
+                </Text>
+              </LinearGradient>
+            ) : (
+              <Image
+                source={image}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  resizeMode: 'cover',
+                }}
+                onError={handleImageError}
+                onLoad={handleImageLoad}
+              />
+            )}
+            
+            {/* Item count badge */}
+            {itemCount > 1 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  backgroundColor: COLORS.primary,
+                  borderRadius: 12,
+                  minWidth: 24,
+                  height: 24,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: colors.card,
+                }}
+              >
+                <Text
+                  style={{
+                    ...FONTS.fontXs,
+                    color: COLORS.white,
+                    fontWeight: 'bold',
+                    fontSize: 11,
+                  }}
+                >
+                  {itemCount}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Enhanced Content */}
+          <View style={{ flex: 1, justifyContent: 'space-between', minHeight: 90 }}>
+            {/* Header */}
+            <View>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    ...FONTS.fontMedium,
+                    fontSize: 16,
+                    color: colors.title,
+                    flex: 1,
+                    marginRight: 8,
+                    lineHeight: 22,
+                  }}
+                  numberOfLines={2}
+                >
+                  {title}
+                </Text>
+                
+                {/* Status Badge */}
+                <View
+                  style={{
+                    backgroundColor: getStatusBgColor(status),
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: getStatusColor(status) + '30',
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...FONTS.fontXs,
+                      color: getStatusColor(status),
+                      fontSize: 10,
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {status}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Price */}
+              <Text
+                style={{
+                  ...FONTS.fontSemiBold,
+                  fontSize: 18,
+                  color: COLORS.primary,
+                  marginBottom: 8,
+                }}
+              >
+                {price}
+              </Text>
+            </View>
+            
+            {/* Footer */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    ...FONTS.fontXs,
+                    color: colors.text,
+                    opacity: 0.7,
+                  }}
+                >
+                  Order #{id?.slice(-6)}
+                </Text>
+                <Text
+                  style={{
+                    ...FONTS.fontXs,
+                    color: colors.text,
+                    opacity: 0.7,
+                    marginTop: 2,
+                  }}
+                >
+                  {offer}
+                </Text>
+              </View>
+              
+              {/* Action Button */}
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  backgroundColor: COLORS.primary,
+                  borderRadius: 12,
+                  shadowColor: COLORS.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+                onPress={onPress}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={{
+                    ...FONTS.fontMedium,
+                    color: COLORS.white,
+                    fontSize: 12,
+                    fontWeight: '600',
+                  }}
+                >
+                  {btntitel}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </Animated.View>
     );
   };
 
@@ -330,7 +528,7 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     const itemCount = order.orderItems?.length || 0;
     if (!displayItem) return `Order ${order.orderId}`;
     return itemCount > 1
-      ? `${displayItem.productName} (+${itemCount - 1} more)`
+      ? `${displayItem.productName} +${itemCount - 1} more`
       : displayItem.productName;
   };
 
@@ -343,55 +541,104 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
       : '₹0.00';
   };
 
+  /** Enhanced Empty State */
+  const EmptyState = ({ type }: { type: 'ongoing' | 'completed' }) => (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+        paddingVertical: 60,
+      }}
+    >
+      <LinearGradient
+        colors={[COLORS.primary + '15', COLORS.primary + '05']}
+        style={{
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 24,
+        }}
+      >
+        <Text style={{ fontSize: 48 }}>
+          {type === 'ongoing' ? '⏳' : '✅'}
+        </Text>
+      </LinearGradient>
+      
+      <Text
+        style={{
+          ...FONTS.fontSemiBold,
+          fontSize: 20,
+          color: colors.title,
+          marginBottom: 8,
+          textAlign: 'center',
+        }}
+      >
+        No {type} orders
+      </Text>
+      
+      <Text
+        style={{
+          ...FONTS.fontRegular,
+          color: colors.text,
+          textAlign: 'center',
+          opacity: 0.7,
+          marginBottom: 24,
+          lineHeight: 22,
+        }}
+      >
+        {type === 'ongoing' 
+          ? "You don't have any ongoing orders at the moment"
+          : "You haven't completed any orders yet"}
+      </Text>
+      
+      <TouchableOpacity
+        style={{
+          paddingHorizontal: 24,
+          paddingVertical: 12,
+          backgroundColor: COLORS.primary,
+          borderRadius: 16,
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 4,
+        }}
+        onPress={() => loadOrders(true)}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={{
+            ...FONTS.fontMedium,
+            color: COLORS.white,
+            fontWeight: '600',
+          }}
+        >
+          Refresh Orders
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderOrderCards = (
     orders: Order[],
     buttonTitle: string,
     navigateTo: string
   ) => {
     if (orders.length === 0) {
-      return (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20,
-            minHeight: 400,
-          }}
-        >
-          <Text
-            style={{
-              ...FONTS.fontRegular,
-              color: colors.text,
-              textAlign: 'center',
-            }}
-          >
-            No {currentIndex === 0 ? 'ongoing' : 'completed'} orders found
-          </Text>
-          <TouchableOpacity
-            style={{
-              marginTop: 15,
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              backgroundColor: COLORS.primary,
-              borderRadius: SIZES.radius,
-            }}
-            onPress={() => loadOrders(true)}
-          >
-            <Text style={{ ...FONTS.fontMedium, color: COLORS.white }}>
-              Refresh Orders
-            </Text>
-          </TouchableOpacity>
-        </View>
-      );
+      return <EmptyState type={currentIndex === 0 ? 'ongoing' : 'completed'} />;
     }
 
     return orders.map((order, index) => {
       const displayItem = getOrderDisplayItem(order);
       const imageSource = renderImageSource(displayItem?.imagePath || displayItem?.imageUrls);
+      const itemCount = order.orderItems?.length || 0;
 
       return (
-        <CustomOrderCard
+        <ModernOrderCard
           key={`${order.orderId}-${index}`}
           id={order.orderId}
           title={getOrderTitle(order)}
@@ -400,9 +647,25 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
           status={order.statusInfo?.label || order.status || ''}
           offer={order.formattedDate || ''}
           btntitel={buttonTitle}
+          itemCount={itemCount}
           onPress={() =>
             navigation.navigate('OrderDetails', {
-              order: order,
+              order: {
+                orderId: order.orderId,
+                customerName: order.customerName,
+                contact: order.contact,
+                email: order.email,
+                address: order.address,
+                totalAmount: order.totalAmount,
+                status: order.status,
+                orderTime: order.orderTime,
+                paymentMode: order.paymentMode,
+                paymentStatus: order.paymentStatus,
+                courierTrackingId: order.courierTrackingId,
+                orderItems: order.orderItems,
+                formattedDate: order.formattedDate,
+                totalFormatted: order.totalFormatted
+              }
             })
           }
         />
@@ -410,65 +673,110 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
     });
   };
 
-  /** Loader */
+  /** Loading State */
   if (loading && !refreshing) {
     return (
       <SafeAreaView
         style={{
           flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text
+        <Header title="My Orders" leftIcon="back" />
+        <View
           style={{
-            ...FONTS.fontRegular,
-            marginTop: 10,
-            color: colors.text,
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          Loading orders...
-        </Text>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text
+            style={{
+              ...FONTS.fontRegular,
+              marginTop: 16,
+              color: colors.text,
+              opacity: 0.7,
+            }}
+          >
+            Loading your orders...
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
 
-  /** Error */
+  /** Error State */
   if (error && !refreshing) {
     return (
       <SafeAreaView
         style={{
           flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
           backgroundColor: colors.background,
         }}
       >
-        <Text
+        <Header title="My Orders" leftIcon="back" />
+        <View
           style={{
-            ...FONTS.fontRegular,
-            marginBottom: 20,
-            color: colors.text,
-            textAlign: 'center',
-            padding: 20,
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 40,
           }}
         >
-          {error}
-        </Text>
-        <TouchableOpacity
-          style={{
-            padding: 15,
-            backgroundColor: COLORS.primary,
-            borderRadius: SIZES.radius,
-          }}
-          onPress={() => loadOrders(true)}
-        >
-          <Text style={{ ...FONTS.fontMedium, color: COLORS.white }}>
-            Retry
+          <View
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: '#FF3B3020',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{ fontSize: 48 }}>⚠️</Text>
+          </View>
+          
+          <Text
+            style={{
+              ...FONTS.fontSemiBold,
+              fontSize: 18,
+              color: colors.title,
+              marginBottom: 8,
+              textAlign: 'center',
+            }}
+          >
+            Something went wrong
           </Text>
-        </TouchableOpacity>
+          
+          <Text
+            style={{
+              ...FONTS.fontRegular,
+              marginBottom: 24,
+              color: colors.text,
+              textAlign: 'center',
+              opacity: 0.7,
+              lineHeight: 22,
+            }}
+          >
+            {error}
+          </Text>
+          
+          <TouchableOpacity
+            style={{
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              backgroundColor: COLORS.primary,
+              borderRadius: 16,
+            }}
+            onPress={() => loadOrders(true)}
+          >
+            <Text style={{ ...FONTS.fontMedium, color: COLORS.white }}>
+              Try Again
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -476,15 +784,15 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
   /** Main UI */
   return (
     <SafeAreaView style={{ backgroundColor: colors.background, flex: 1 }}>
-      <Header title="My Order" leftIcon="back" />
+      <Header title="My Orders" leftIcon="back" />
 
       <View style={{ flex: 1 }}>
-        {/* Tabs */}
+        {/* Enhanced Modern Tabs */}
         <LinearGradient
           colors={['rgba(236,245,241,0)', 'rgba(236,245,241,0.80)']}
           style={{
             width: '100%',
-            height: 90,
+            height: 100,
             bottom: 0,
             position: 'absolute',
             zIndex: 10,
@@ -492,62 +800,80 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
           }}
         >
           <View
-            style={[
-              GlobalStyleSheet.container,
-              { paddingTop: 20, paddingHorizontal: 60 },
-            ]}
+            style={{
+              paddingTop: 20,
+              paddingHorizontal: 20,
+              alignItems: 'center',
+            }}
           >
             <View
               style={{
                 flexDirection: 'row',
-                gap: 10,
-                alignItems: 'center',
-                justifyContent: 'center',
                 backgroundColor: colors.card,
-                height: 50,
-                borderRadius: 25,
-                paddingHorizontal: 10,
+                borderRadius: 20,
+                padding: 4,
+                width: width - 80,
+                shadowColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 1,
+                shadowRadius: 12,
+                elevation: 8,
               }}
             >
               <TouchableOpacity
                 onPress={() => onPressTouch(0)}
-                style={[
-                  GlobalStyleSheet.TouchableOpacity2,
-                  {
-                    backgroundColor:
-                      currentIndex === 0 ? COLORS.primary : colors.card,
-                    borderColor:
-                      currentIndex === 0 ? COLORS.primary : colors.title,
-                  },
-                ]}
+                style={{
+                  flex: 1,
+                  backgroundColor: currentIndex === 0 ? COLORS.primary : 'transparent',
+                  borderRadius: 16,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  alignItems: 'center',
+                  ...(currentIndex === 0 && {
+                    shadowColor: COLORS.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  }),
+                }}
               >
                 <Text
                   style={{
-                    ...FONTS.fontRegular,
+                    ...FONTS.fontMedium,
                     fontSize: 15,
-                    color: currentIndex === 0 ? colors.card : colors.text,
+                    color: currentIndex === 0 ? COLORS.white : colors.text,
+                    fontWeight: currentIndex === 0 ? '600' : '400',
                   }}
                 >
                   Ongoing ({ongoingOrders.length})
                 </Text>
               </TouchableOpacity>
+              
               <TouchableOpacity
                 onPress={() => onPressTouch(1)}
-                style={[
-                  GlobalStyleSheet.TouchableOpacity2,
-                  {
-                    backgroundColor:
-                      currentIndex === 1 ? COLORS.primary : colors.card,
-                    borderColor:
-                      currentIndex === 1 ? COLORS.primary : colors.title,
-                  },
-                ]}
+                style={{
+                  flex: 1,
+                  backgroundColor: currentIndex === 1 ? COLORS.primary : 'transparent',
+                  borderRadius: 16,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  alignItems: 'center',
+                  ...(currentIndex === 1 && {
+                    shadowColor: COLORS.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 4,
+                  }),
+                }}
               >
                 <Text
                   style={{
-                    ...FONTS.fontRegular,
+                    ...FONTS.fontMedium,
                     fontSize: 15,
-                    color: currentIndex === 1 ? colors.card : colors.text,
+                    color: currentIndex === 1 ? COLORS.white : colors.text,
+                    fontWeight: currentIndex === 1 ? '600' : '400',
                   }}
                 >
                   Completed ({completedOrders.length})
@@ -576,52 +902,44 @@ const Myorder = ({ navigation }: MyorderScreenProps) => {
         >
           {/* Ongoing Orders */}
           <View style={{ width: SIZES.width }}>
-            <View
-              style={[
-                GlobalStyleSheet.container,
-                { paddingTop: 0, paddingBottom: 0 },
-              ]}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ 
+                paddingBottom: 120,
+                paddingTop: 20,
+              }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[COLORS.primary]}
+                  tintColor={COLORS.primary}
+                />
+              }
             >
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    colors={[COLORS.primary]}
-                    tintColor={COLORS.primary}
-                  />
-                }
-              >
-                {renderOrderCards(ongoingOrders, 'View Details', 'OrderDetails')}
-              </ScrollView>
-            </View>
+              {renderOrderCards(ongoingOrders, 'View Details', 'OrderDetails')}
+            </ScrollView>
           </View>
 
           {/* Completed Orders */}
           <View style={{ width: SIZES.width }}>
-            <View
-              style={[
-                GlobalStyleSheet.container,
-                { paddingTop: 0, paddingBottom: 0 },
-              ]}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ 
+                paddingBottom: 120,
+                paddingTop: 20,
+              }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[COLORS.primary]}
+                  tintColor={COLORS.primary}
+                />
+              }
             >
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    colors={[COLORS.primary]}
-                    tintColor={COLORS.primary}
-                  />
-                }
-              >
-                {renderOrderCards(completedOrders, 'View Details', 'OrderDetails')}
-              </ScrollView>
-            </View>
+              {renderOrderCards(completedOrders, 'View Details', 'OrderDetails')}
+            </ScrollView>
           </View>
         </ScrollView>
       </View>

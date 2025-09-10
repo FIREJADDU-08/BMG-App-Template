@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -8,8 +8,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Linking,
-  Animated,
-  Easing
+  Alert
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
@@ -19,7 +18,6 @@ import { useTheme } from '@react-navigation/native';
 import { IMAGES } from '../../constants/Images';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import IconFeather from 'react-native-vector-icons/Feather';
-import IconFontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type OrderDetailsScreenProps = StackScreenProps<RootStackParamList, 'OrderDetails'>;
 
@@ -42,7 +40,7 @@ interface Order {
   customerName: string;
   contact: string;
   email: string;
-  address: string;
+  address: any;
   totalAmount: number;
   status: string;
   orderTime: string;
@@ -57,7 +55,7 @@ interface Order {
 }
 
 const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
-  const { order } = route.params;
+  const { order: routeOrder } = route.params;
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
   const [expandedSections, setExpandedSections] = useState({
@@ -67,6 +65,41 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
     orderItems: true,
     courierInfo: true
   });
+
+  // Normalize the order data to handle different structures
+  const order = useMemo(() => {
+    if (!routeOrder) return null;
+    
+    // If the order object already has the expected structure
+    if (routeOrder.orderId) {
+      return {
+        ...routeOrder,
+        // Ensure address is a string
+        address: typeof routeOrder.address === 'string' 
+          ? routeOrder.address 
+          : routeOrder.address?.addressLine 
+            ? `${routeOrder.address.addressLine}, ${routeOrder.address.city}, ${routeOrder.address.state} - ${routeOrder.address.pincode}`
+            : 'Address not available',
+        // Ensure orderItems have proper structure
+        orderItems: Array.isArray(routeOrder.orderItems) 
+          ? routeOrder.orderItems.map((item, index) => ({
+              id: item.itemid || item.id || index,
+              itemid: item.itemid || item.id || index,
+              sno: item.sno || `SNO-${index}`,
+              tagno: item.tagno || `TAG-${index}`,
+              productName: item.productName || `Product ${index + 1}`,
+              quantity: item.quantity || 1,
+              price: item.price || 0,
+              image_path: item.imagePath || item.image_path,
+              imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [item.imagePath].filter(Boolean),
+              priceFormatted: item.priceFormatted || (item.price ? `₹${item.price.toFixed(2)}` : '₹0.00')
+            }))
+          : []
+      };
+    }
+    
+    return null;
+  }, [routeOrder]);
 
   // Toggle section expansion
   const toggleSection = (section: string) => {
@@ -91,6 +124,9 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
       }
       else if (typeof imagePath === 'string') {
         paths = [imagePath];
+      }
+      else if (typeof imagePath === 'object' && imagePath.image) {
+        paths = [imagePath.image];
       }
       
       return paths
@@ -132,7 +168,8 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toUpperCase()) {
+    const statusUpper = status?.toUpperCase();
+    switch (statusUpper) {
       case 'PLACED':
       case 'PENDING':
         return COLORS.warning;
@@ -179,15 +216,15 @@ const OrderDetails = ({ route, navigation }: OrderDetailsScreenProps) => {
     Linking.openURL(`mailto:${email}`);
   };
 
-const handleTrackOrder = () => {
-  console.log('Navigating with orderId:', order.orderId);
-  if (!order?.orderId) {
-    console.warn('No order ID available!');
-    return;
-  }
-  navigation.navigate('Trackorder', { orderId: order.orderId });
-};
+  const handleTrackOrder = () => {
+    if (!order?.orderId) {
+      Alert.alert('Error', 'No order ID available for tracking');
+      return;
+    }
+   console.log("Navigating with orderId:", order.orderId);
+navigation.navigate('Trackorder', { orderId: order.orderId });
 
+  };
 
   const SectionHeader = ({ title, isExpanded, onToggle, icon }: { title: string, isExpanded: boolean, onToggle: () => void, icon: string }) => (
     <TouchableOpacity onPress={onToggle} style={styles.sectionHeader}>
@@ -203,15 +240,15 @@ const handleTrackOrder = () => {
     </TouchableOpacity>
   );
 
-
-
-
   if (!order) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <Text style={{ ...FONTS.fontRegular, color: colors.text }}>Order not found</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ ...FONTS.fontMedium, color: COLORS.primary, marginTop: 10 }}>Go Back</Text>
+        <Text style={{ ...FONTS.fontRegular, color: colors.text }}>Order not found or invalid data structure</Text>
+        <Text style={{ ...FONTS.fontRegular, color: colors.text, marginTop: 10, textAlign: 'center' }}>
+          Received data: {JSON.stringify(routeOrder).substring(0, 100)}...
+        </Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={{ ...FONTS.fontMedium, color: COLORS.primary }}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -333,7 +370,14 @@ const handleTrackOrder = () => {
                   <Text style={[styles.infoLabel, { color: colors.text }]}>Contact</Text>
                   <View style={styles.contactContainer}>
                     <Text style={[styles.infoValue, { color: colors.title }]}>{order.contact || 'N/A'}</Text>
-                    
+                    {order.contact && (
+                      <TouchableOpacity 
+                        style={styles.contactAction}
+                        onPress={() => handleCall(order.contact)}
+                      >
+                        <Icon name="call" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </View>
@@ -346,6 +390,14 @@ const handleTrackOrder = () => {
                   <Text style={[styles.infoLabel, { color: colors.text }]}>Email</Text>
                   <View style={styles.contactContainer}>
                     <Text style={[styles.infoValue, { color: colors.title }]}>{order.email || 'N/A'}</Text>
+                    {order.email && (
+                      <TouchableOpacity 
+                        style={styles.contactAction}
+                        onPress={() => handleEmail(order.email)}
+                      >
+                        <Icon name="email" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </View>
@@ -419,7 +471,6 @@ const handleTrackOrder = () => {
               <View 
                 key={item.id || index} 
                 style={[styles.orderItemCard, { backgroundColor: colors.background }]}
-               
               >
                 <Image 
                   source={imageSource} 
@@ -463,7 +514,7 @@ const handleTrackOrder = () => {
         </View>
 
         {/* Courier Information (if available) */}
-        {order.courierName && (
+        {order.courierTrackingId && (
           <View style={[styles.section, { backgroundColor: colors.card }]}>
             <SectionHeader 
               title="Courier Information" 
@@ -474,27 +525,27 @@ const handleTrackOrder = () => {
             
             {expandedSections.courierInfo && (
               <View style={styles.sectionContent}>
-                <View style={styles.infoRow}>
-                  <View style={styles.infoIcon}>
-                    <Icon name="local-shipping" size={18} color={COLORS.primary} />
-                  </View>
-                  <View style={styles.infoTextContainer}>
-                    <Text style={[styles.infoLabel, { color: colors.text }]}>Courier</Text>
-                    <Text style={[styles.infoValue, { color: colors.title }]}>{order.courierName}</Text>
-                  </View>
-                </View>
-                
-                {order.courierTrackingId && (
+                {order.courierName && (
                   <View style={styles.infoRow}>
                     <View style={styles.infoIcon}>
-                      <Icon name="qr-code" size={18} color={COLORS.primary} />
+                      <Icon name="local-shipping" size={18} color={COLORS.primary} />
                     </View>
                     <View style={styles.infoTextContainer}>
-                      <Text style={[styles.infoLabel, { color: colors.text }]}>Tracking ID</Text>
-                      <Text style={[styles.infoValue, { color: colors.title }]}>{order.courierTrackingId}</Text>
+                      <Text style={[styles.infoLabel, { color: colors.text }]}>Courier</Text>
+                      <Text style={[styles.infoValue, { color: colors.title }]}>{order.courierName}</Text>
                     </View>
                   </View>
                 )}
+                
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIcon}>
+                    <Icon name="qr-code" size={18} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.infoTextContainer}>
+                    <Text style={[styles.infoLabel, { color: colors.text }]}>Tracking ID</Text>
+                    <Text style={[styles.infoValue, { color: colors.title }]}>{order.courierTrackingId}</Text>
+                  </View>
+                </View>
               </View>
             )}
           </View>
@@ -586,67 +637,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
   },
-  timelineContainer: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  timelineRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  timelineStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  timelineStepContainer: {
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  timelineIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.lightGray,
-  },
-  timelineIconActive: {
-    backgroundColor: COLORS.primary,
-  },
-  timelineIconCompleted: {
-    backgroundColor: COLORS.success,
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.gray,
-  },
-  timelineDotActive: {
-    backgroundColor: COLORS.white,
-  },
-  timelineLabel: {
-    ...FONTS.fontRegular,
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  timelineConnector: {
-    flex: 1,
-    height: 2,
-    backgroundColor: COLORS.lightGray,
-    marginHorizontal: 4,
-  },
-  timelineConnectorActive: {
-    backgroundColor: COLORS.primary,
-  },
   section: {
     borderRadius: 16,
     padding: 0,
@@ -711,14 +701,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    width: 100,
+    minWidth: 80,
+    alignItems: 'center',
   },
   statusText: {
     ...FONTS.fontRegular,
     fontSize: 12,
     color: COLORS.white,
     textTransform: 'uppercase',
-    alignSelf: "center"
   },
   infoRow: {
     flexDirection: 'row',

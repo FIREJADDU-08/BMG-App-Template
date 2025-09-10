@@ -73,6 +73,26 @@ type PaymentMethod = {
     enabled: boolean;
 };
 
+type AddressType = {
+    id?: string;
+    customerId?: string;
+    name?: string;
+    phone?: string;
+    alternatePhone?: string;
+    addressLine?: string;
+    locality?: string;
+    landmark?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pincode?: string;
+    type?: string;
+    isDefault?: boolean;
+    gstNumber?: string;
+    companyName?: string;
+    email?: string;
+};
+
 type PaymentScreenProps = StackScreenProps<RootStackParamList, 'Payment'>;
 
 const Payment = ({ navigation, route }: PaymentScreenProps) => {
@@ -102,11 +122,11 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
     }, []);
 
     // Handle payment result when coming back from payment gateway
-    React.useEffect(() => {
-        if (paymentResult) {
-            handlePaymentResult(paymentResult);
-        }
-    }, [paymentResult]);
+    // React.useEffect(() => {
+    //     if (paymentResult) {
+    //         handlePaymentResult(paymentResult);
+    //     }
+    // }, [paymentResult]);
 
     const paymentMethods: PaymentMethod[] = [
         {
@@ -125,9 +145,17 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
         }
     ];
 
-    const formatAddress = (address: any) => {
+    const formatAddress = (address: AddressType | null | undefined): string => {
         if (!address) return "No address selected";
-        return `${address.addressLine}, ${address.locality}, ${address.city}, ${address.state} - ${address.pincode}`;
+        
+        const parts = [];
+        if (address.addressLine) parts.push(address.addressLine);
+        if (address.locality) parts.push(address.locality);
+        if (address.city) parts.push(address.city);
+        if (address.state) parts.push(address.state);
+        if (address.pincode) parts.push(address.pincode);
+        
+        return parts.length > 0 ? parts.join(', ') : "Invalid address format";
     };
 
     const getImageUrl = (imagePath?: string): string => {
@@ -146,22 +174,43 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
     };
 
     const prepareOrderData = (paymentMethod: string, paymentStatus: string = 'pending') => {
+        // Safely extract address properties with fallbacks
+        const addressData = selectedAddress || {} as AddressType;
+        
         return {
+            customerName: addressData.name || '',
+            contact: addressData.phone || userContact,
+            email: addressData.email || userEmail,
             totalAmount: orderSummary?.grandTotal || 0,
-            address: formatAddress(selectedAddress),
+            address: {
+                addressLine: addressData.addressLine || '',
+                locality: addressData.locality || '',
+                landmark: addressData.landmark || '',
+                name: addressData.name || '',
+                phone: addressData.phone || userContact,
+                alternatePhone: addressData.alternatePhone || '',
+                isDefault: addressData.isDefault || false,
+                id: addressData.id || '',
+                customerId: addressData.customerId || '',
+                gstNumber: addressData.gstNumber || '',
+                companyName: addressData.companyName || '',
+                city: addressData.city || '',
+                state: addressData.state || '',
+                country: addressData.country || "India",
+                pincode: addressData.pincode || '',
+            },
+            paymentMode: paymentMethod.toUpperCase(),
+            paymentStatus: paymentStatus.toUpperCase(),
             items: products.map((item: CartItemWithDetails) => ({
+                productId: `${item.fullDetails?.ITEMID || ''}-${item.fullDetails?.TAGNO || ''}`,
                 productName: item.fullDetails?.SUBITEMNAME || 'Unnamed Product',
                 price: item.fullDetails?.GrandTotal || 0,
-                sno: item.itemTagSno,
                 itemId: item.fullDetails?.ITEMID || '',
                 tagNo: item.fullDetails?.TAGNO || '',
+                sno: item.itemTagSno,
                 imagePath: item.fullDetails?.ImagePath || '',
                 quantity: item.fullDetails?.quantity || 1
-            })),
-            email: selectedAddress?.email || userEmail,
-            contact: selectedAddress?.phone || userContact,
-            paymentMode: paymentMethod.toUpperCase(),
-            paymentStatus: paymentStatus.toUpperCase()
+            }))
         };
     };
 
@@ -183,77 +232,77 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
         return 'PENDING';
     };
 
-    const handlePaymentResult = async (result: any) => {
-        const { status, orderId, paymentId, error } = result;
+    // const handlePaymentResult = async (result: any) => {
+    //     const { status, orderId, paymentId, error } = result;
         
-        // Determine payment mode and status based on result
-        const paymentMode = 'ONLINE';
+    //     // Determine payment mode and status based on result
+    //     const paymentMode = 'ONLINE';
         
-        // For online payments, verify the payment status with the server
-        let paymentStatus = 'PENDING';
-        let finalStatus = status;
+    //     // For online payments, verify the payment status with the server
+    //     let paymentStatus = 'PENDING';
+    //     let finalStatus = status;
         
-        if (status === 'completed' || status === 'success') {
-            try {
-                // Call the payment status API to verify the payment
-                const statusResponse = await checkPaymentStatus({
-                    merchantTxnNo: orderId,
-                    originalTxnNo: orderId,
-                    transactionType: "STATUS"
-                });
+    //     if (status === 'completed' || status === 'success') {
+    //         try {
+    //             // Call the payment status API to verify the payment
+    //             const statusResponse = await checkPaymentStatus({
+    //                 merchantTxnNo: orderId,
+    //                 originalTxnNo: orderId,
+    //                 transactionType: "STATUS"
+    //             });
                 
-                console.log('Payment status API response:', statusResponse);
+    //             console.log('Payment status API response:', statusResponse);
                 
-                // Check if payment is actually successful based on API response
-                if (statusResponse && statusResponse.responseCode === "R1000" && statusResponse.status === "SUCCESS") {
-                    paymentStatus = 'PAID';
-                    finalStatus = 'completed';
-                } else {
-                    paymentStatus = 'FAILED';
-                    finalStatus = 'failed';
-                }
-            } catch (statusError) {
-                console.error('Error verifying payment status:', statusError);
-                paymentStatus = 'PENDING';
-                finalStatus = 'failed';
-            }
-        } else {
-            paymentStatus = 'FAILED';
-        }
+    //             // Check if payment is actually successful based on API response
+    //             if (statusResponse && statusResponse.responseCode === "R1000" && statusResponse.status === "SUCCESS") {
+    //                 paymentStatus = 'PAID';
+    //                 finalStatus = 'completed';
+    //             } else {
+    //                 paymentStatus = 'FAILED';
+    //                 finalStatus = 'failed';
+    //             }
+    //         } catch (statusError) {
+    //             console.error('Error verifying payment status:', statusError);
+    //             paymentStatus = 'PENDING';
+    //             finalStatus = 'failed';
+    //         }
+    //     } else {
+    //         paymentStatus = 'FAILED';
+    //     }
         
-        const orderDetails = {
-            orderId: orderId,
-            items: products,
-            total: orderSummary?.grandTotal || 0,
-            date: new Date().toISOString(),
-            status: getOrderStatus('razorpay', finalStatus),
-            address: selectedAddress,
-            paymentMode: paymentMode,
-            paymentStatus: paymentStatus,
-            paymentId: paymentId || null
-        };
+    //     const orderDetails = {
+    //         orderId: orderId,
+    //         items: products,
+    //         total: orderSummary?.grandTotal || 0,
+    //         date: new Date().toISOString(),
+    //         status: getOrderStatus('razorpay', finalStatus),
+    //         address: selectedAddress,
+    //         paymentMode: paymentMode,
+    //         paymentStatus: paymentStatus,
+    //         paymentId: paymentId || null
+    //     };
 
-        if (finalStatus === 'completed' || finalStatus === 'success') {
-            // Payment successful - navigate to success modal
-            navigation.navigate('SuccessModal', {
-                orderDetails,
-                onDismiss: () => {
-                    // Navigate back to Home instead of resetting
-                    navigation.navigate('Home');
-                }
-            });
-        } else {
-            // Payment failed - navigate to failure modal
-            navigation.navigate('FailureModal', {
-                errorMessage: error || 'Payment was unsuccessful. Please try again.',
-                orderDetails: orderDetails,
-                onDismiss: () => {
-                    // Navigate back to MyCart instead of resetting
-                    navigation.navigate('MyCart');
-                }
-            });
-        }
-    };
+    //     if (finalStatus === 'completed' || finalStatus === 'success') {
+    //         // Payment successful - navigate to success modal
+    //         navigation.navigate('SuccessModal', {
+    //             orderDetails,
+    //             onDismiss: () => {
+    //                 // Navigate back to Cart instead of resetting
+    //                 navigation.navigate('MyCart');
+    //             }
+    //         });
+    //     } else {
+    //         // Payment failed - navigate to failure modal
+    //         navigation.navigate('FailureModal', {
+    //             errorMessage: error || 'Payment was unsuccessful. Please try again.',
+    //             orderDetails: orderDetails,
+    //             onDismiss: () => {
+    //                 // Navigate back to MyCart instead of resetting
+    //                 navigation.navigate('MyCart');
+    //             }
+    //         });
+    //     }
+    // };
 
     const handlePaymentInitiation = async (orderId: string, totalAmount: number, email: string, contact: string) => {
         try {
@@ -359,7 +408,7 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                         orderDetails,
                         onDismiss: () => {
                             // Navigate to Home instead of resetting
-                            navigation.navigate('Home');
+                            navigation.navigate('MyCart');
                         }
                     });
                 } else {
@@ -592,7 +641,7 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
 
                             <View style={{ backgroundColor: colors.background, borderRadius: 10, padding: 15 }}>
                                 <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title, marginBottom: 4 }}>
-                                    {selectedAddress?.name} • {selectedAddress?.type}
+                                    {selectedAddress?.name || 'No name'} • {selectedAddress?.type || 'Home'}
                                 </Text>
                                 <Text style={{ ...FONTS.fontRegular, fontSize: 13, color: colors.text, lineHeight: 18 }}>
                                     {formatAddress(selectedAddress)}

@@ -84,17 +84,24 @@ export const getPaymentRedirectUrl = async (
 // In your PaymentService file, add this function:
 export const checkPaymentStatus = async (statusData) => {
   try {
-    const response = await axios.post(
+    const response = await fetch(
       'https://app.bmgjewellers.com/api/v1/payment/status',
-      statusData,
       {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(statusData),
       }
     );
-    console.log(response.data);
-    return response.data;
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Payment status response:", data);
+    return data;
   } catch (error) {
     console.error('Error checking payment status:', error);
     throw error;

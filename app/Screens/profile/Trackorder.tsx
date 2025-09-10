@@ -57,6 +57,57 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
   const [showAllProducts, setShowAllProducts] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
+  // Function to process image paths
+// Function to process image paths - Updated to handle JSON array strings
+const processImagePath = (imagePath: string | null | undefined): any => {
+  if (!imagePath) {
+    return IMAGES.placeholder; // Use placeholder if no image path
+  }
+  
+  try {
+    // Parse the JSON string to get the array of image paths
+    const imageArray = JSON.parse(imagePath);
+    
+    // If it's an array and has at least one image, use the first one
+    if (Array.isArray(imageArray) && imageArray.length > 0) {
+      let firstImage = imageArray[0];
+      
+      // If it's already a full URL, use it directly
+      if (firstImage.startsWith('http')) {
+        return { uri: firstImage };
+      }
+      
+      // If it's a relative path, construct the full URL
+      if (firstImage.startsWith('/')) {
+        const baseUrl = 'https://app.bmgjewellers.com';
+        return { uri: `${baseUrl}${firstImage}` };
+      }
+      
+      // If it's just a filename, construct the path
+      const baseUrl = 'https://app.bmgjewellers.com/static/media/';
+      return { uri: `${baseUrl}${firstImage}` };
+    }
+  } catch (parseError) {
+    console.log('Error parsing image path JSON:', parseError);
+    
+    // Fallback: treat as a single string if JSON parsing fails
+    if (imagePath.startsWith('http')) {
+      return { uri: imagePath };
+    }
+    
+    if (imagePath.startsWith('/')) {
+      const baseUrl = 'https://app.bmgjewellers.com';
+      return { uri: `${baseUrl}${imagePath}` };
+    }
+    
+    const baseUrl = 'https://app.bmgjewellers.com/static/media/';
+    return { uri: `${baseUrl}${imagePath}` };
+  }
+  
+  // Final fallback to placeholder
+  return IMAGES.placeholder;
+};
+
   // Fetch order details
   const fetchOrder = async (isRefresh = false) => {
     try {
@@ -406,11 +457,8 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
             </View>
 
             {displayedProducts.map((item: OrderItem, index: number) => {
-              const imageUrl = item.image_path?.startsWith('http') 
-                ? item.image_path 
-                : item.image_path?.startsWith('/static') 
-                  ? IMAGES.placeholder 
-                  : item.image_path;
+              // Use the processImagePath function to get the correct image source
+              const imageSource = processImagePath(item.image_path);
               
               return (
                 <View key={`${item.id}-${index}`} style={{ marginBottom: 15 }}>
@@ -418,7 +466,7 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
                     id={item.id.toString()}
                     title={item.productName}
                     price={`₹${item.price.toLocaleString('en-IN')} × ${item.quantity}`}
-                    image={imageUrl}
+                    image={imageSource}
                     removebtn={true}
                     status={orderData.current_status}
                     grid={true}

@@ -4,6 +4,7 @@ import { SafeAreaView, Linking, Alert, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../Navigations/RootStackParamList';
 import { CommonActions } from '@react-navigation/native';
+import { checkPaymentStatus } from '../../Services/PaymentService';
 
 type PaymentGatewayScreenProps = StackScreenProps<RootStackParamList, 'PaymentGateway'>;
 
@@ -23,12 +24,12 @@ const PaymentGateway = ({ route, navigation }: PaymentGatewayScreenProps) => {
         }
     };
 
-    const handlePaymentResult = (params: URLSearchParams) => {
+    const handlePaymentResult = async (params: URLSearchParams) => {
         const status = params.get('status');
         const orderId = params.get('orderId');
         
         if (status === 'success') {
-            handlePaymentSuccess(orderId);
+            await handlePaymentSuccess(orderId);
         } else {
             // Check if payment was cancelled
             const isCancelled = params.get('cancelled') === 'true' || status === 'cancelled';
@@ -37,11 +38,11 @@ const PaymentGateway = ({ route, navigation }: PaymentGatewayScreenProps) => {
         }
     };
 
-    const handleNavigationStateChange = (navState: WebViewNavigation) => {
+    const handleNavigationStateChange = async (navState: WebViewNavigation) => {
         // Check for both web and deep link URLs
         if (navState.url.includes('payment-success') || 
             navState.url.includes('bmgjewellers://payment-result?status=success')) {
-            handlePaymentSuccess();
+            await handlePaymentSuccess();
         } else if (navState.url.includes('payment-failure') || 
                  navState.url.includes('bmgjewellers://payment-result?status=failure')) {
             handlePaymentFailure(null, false);
@@ -51,7 +52,30 @@ const PaymentGateway = ({ route, navigation }: PaymentGatewayScreenProps) => {
         }
     };
 
-    const handlePaymentSuccess = (orderId?: string | null) => {
+    const handlePaymentSuccess = async (orderId?: string | null) => {
+        const orderIdToCheck = orderId || orderDetails.orderId;
+        
+        if (orderIdToCheck) {
+            try {
+                // Initiate the checkPaymentStatus function
+                const statusData = {
+                    merchantTxnNo: orderIdToCheck,
+                    originalTxnNo: orderIdToCheck,
+                    transactionType: "STATUS"
+                };
+                
+                console.log('Calling checkPaymentStatus with data:', statusData);
+                
+                const response = await checkPaymentStatus(statusData);
+                console.log('Payment status response:', response);
+                
+            } catch (error) {
+                console.error('Error checking payment status:', error);
+            }
+        } else {
+            console.warn('No order ID available for payment status check');
+        }
+        
         // Directly navigate to Home without showing modal
         navigation.dispatch(
             CommonActions.reset({

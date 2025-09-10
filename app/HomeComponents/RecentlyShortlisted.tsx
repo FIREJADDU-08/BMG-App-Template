@@ -28,6 +28,66 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH =
   SCREEN_WIDTH > SIZES.container ? SIZES.container / 3 : SCREEN_WIDTH / 2.9;
 
+const API_IMAGE_URL = 'https://app.bmgjewellers.com';
+
+// ✅ Utility to extract product images
+const getProductImages = (item: any): string[] => {
+  try {
+    const imageData = item?.ImagePath;
+
+    if (!imageData) {
+      return [IMAGES.item11];
+    }
+
+    let parsedImages: string[] = [];
+    
+    if (typeof imageData === 'string') {
+      // Handle JSON string arrays
+      if (imageData.startsWith('[') && imageData.endsWith(']')) {
+        try {
+          parsedImages = JSON.parse(imageData);
+        } catch {
+          // Fallback parsing for malformed JSON
+          const pathMatch = imageData.match(/"([^"]+)"/g);
+          if (pathMatch) {
+            parsedImages = pathMatch.map((path: string) =>
+              path.replace(/"/g, '').trim()
+            );
+          } else {
+            parsedImages = [imageData.replace(/["'[\]]/g, '').trim()];
+          }
+        }
+      } else {
+        // Handle simple string paths
+        parsedImages = [imageData.trim()];
+      }
+    } else if (Array.isArray(imageData)) {
+      // Handle already parsed arrays
+      parsedImages = imageData;
+    } else {
+      return [IMAGES.item11];
+    }
+
+    // Format URLs properly
+    return parsedImages.length > 0
+      ? parsedImages.map(img => {
+          let cleanedImg = img.replace(/["'[\]]/g, '').trim();
+          
+          if (cleanedImg.startsWith('http')) {
+            return cleanedImg;
+          } else if (cleanedImg.startsWith('/')) {
+            return `${API_IMAGE_URL}${cleanedImg}`;
+          } else {
+            return `${API_IMAGE_URL}/${cleanedImg}`;
+          }
+        })
+      : [IMAGES.item11];
+  } catch (error) {
+    console.error('Error parsing product images:', error);
+    return [IMAGES.item11];
+  }
+};
+
 const RecentlyShortlistedSection: React.FC<Props> = ({
   navigation,
   title = 'Recently Shortlisted By You',
@@ -41,62 +101,52 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
-  // Handle image loading errors
   const handleImageError = useCallback((imageUrl: string) => {
     console.log('Image failed to load:', imageUrl);
     setFailedImages(prev => new Set(prev).add(imageUrl));
   }, []);
 
-  // Get working image URL (fallback if image failed to load)
-  const getWorkingImage = useCallback((product: Product): string => {
-    if (failedImages.has(product.image)) {
-      return IMAGES.item13;
-    }
-    return product.image || IMAGES.item13;
-  }, [failedImages]);
+  const getWorkingImage = useCallback(
+    (product: Product): string => {
+      if (failedImages.has(product.image)) {
+        return IMAGES.item11;
+      }
+      return product.image || IMAGES.item11;
+    },
+    [failedImages],
+  );
 
-  // Process products
+  // ✅ Process products with getProductImages
   const processProducts = useCallback((rawProducts: any[]): Product[] => {
-    if (!Array.isArray(rawProducts)) {
-      console.log('Invalid products data:', rawProducts);
-      return [];
-    }
-
-    console.log('Processing products:', rawProducts.length);
+    if (!Array.isArray(rawProducts)) return [];
 
     return rawProducts.map((product, index) => {
-      const processedProduct = {
-        id: product.SNO || product.TAGKEY || product.id || `product-${index}`,
-        title: product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product',
-        price: product.GrandTotal || product.RATE || product.price || 0,
-        discount: product.discount || 0,
-        image: product.ImagePath || IMAGES.item13,
-        rawData: product,
-      };
+      const images = getProductImages(product);
+      const firstImage = images[0] || IMAGES.item11;
 
-      console.log('Processed product image:', processedProduct.image);
-      return processedProduct;
+      return {
+        id: String(product.SNO || product.TAGKEY || product.id || `product-${index}`),
+        title: String(product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product'),
+        price: Number(product.GrandTotal || product.RATE || product.price || 0),
+        discount: Number(product.discount || 0),
+        image: firstImage, // ✅ first image for display
+        rawData: { ...product, allImages: images }, // ✅ keep all images if needed
+      };
     });
   }, []);
 
-  // Fetch products
   const fetchRecentlyViewed = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       setFailedImages(new Set());
-      
-      console.log('Fetching recently viewed products...');
+
       const data = await getRecentlyViewedProducts();
-      
-      console.log('Received data:', data);
-      
+
       if (Array.isArray(data)) {
-        const processedProducts = processProducts(data);
-        console.log('Processed products:', processedProducts.length);
-        setProducts(processedProducts);
+        setProducts(processProducts(data));
       } else {
-        console.log('Invalid data format');
+        setError('Invalid data received from server');
         setProducts([]);
       }
     } catch (error) {
@@ -114,7 +164,9 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
   const handleProductPress = useCallback(
     (productId: string) => {
-      navigation.navigate('ProductDetails', { sno: productId });
+      if (productId) {
+        navigation.navigate('ProductDetails', { sno: productId });
+      }
     },
     [navigation],
   );
@@ -143,6 +195,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
             onImageError={() => handleImageError(product.image)}
             card3
             removelikebtn
+            product={product.rawData || product}
           />
         </View>
       );
@@ -192,7 +245,6 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
         styles.container,
         { backgroundColor: colors.background },
       ]}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.title }]}>{title}</Text>
         {showSeeAll && products.length > 0 && (
@@ -202,12 +254,12 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
         )}
       </View>
 
-      {/* Horizontal Scroll */}
       <View style={styles.scrollContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}>
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled">
           <View style={styles.productsRow}>{products.map(renderProductItem)}</View>
         </ScrollView>
       </View>
@@ -223,6 +275,7 @@ const styles = StyleSheet.create({
     padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 120,
   },
   loadingText: {
     ...FONTS.fontRegular,
@@ -234,6 +287,7 @@ const styles = StyleSheet.create({
     padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 120,
   },
   errorText: {
     ...FONTS.fontRegular,
@@ -243,6 +297,8 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     padding: SIZES.paddingSmall,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   retryText: {
     ...FONTS.fontMedium,
@@ -252,6 +308,7 @@ const styles = StyleSheet.create({
     padding: SIZES.paddingLarge,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 120,
   },
   emptyText: {
     ...FONTS.fontRegular,
@@ -261,6 +318,8 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: SIZES.paddingSmall,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   refreshText: {
     ...FONTS.fontMedium,
