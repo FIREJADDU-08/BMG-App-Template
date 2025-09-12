@@ -14,7 +14,6 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import { IMAGES } from '../../constants/Images';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
-import { registerForPushNotificationsAsync, sendPushNotification } from "../../Services/NotificationService";
 
 type SignInScreenProps = StackScreenProps<RootStackParamList, 'SignIn'>;
 
@@ -39,25 +38,12 @@ const SignIn = ({ navigation }: SignInScreenProps) => {
   };
 
   useEffect(() => {
-    const handlePushNotification = async (title: string, body: string) => {
-      const token = await registerForPushNotificationsAsync();
-      if (token) {
-        await sendPushNotification(token, title, body);
-      }
-    };
-
     if (isSuccess && user) {
-      // 🔔 Send welcome push
-      handlePushNotification("Welcome 🎉", "You have logged in successfully!");
-
       navigation.navigate('DrawerNavigation', { screen: 'Home' });
       dispatch(resetLoginState());
     }
 
     if (isError) {
-      // 🔔 Send error push
-      handlePushNotification("Login Failed ❌", message || "Something went wrong");
-
       if (message === 'Login does not exist, please sign up') {
         Alert.alert(
           'User Not Found',

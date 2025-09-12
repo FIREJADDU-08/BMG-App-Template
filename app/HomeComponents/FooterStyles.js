@@ -7,9 +7,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     paddingVertical: 40,
     paddingHorizontal: 20,
-    marginTop: 50,
+    marginTop: 0,
     borderTopWidth: 1,
     borderTopColor: '#e9ecef',
+    marginBottom: 0,
+    width: width,
+    height: height * 0.25,
   },
   
   card: {

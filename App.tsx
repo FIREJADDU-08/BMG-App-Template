@@ -1,58 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { Platform } from "react-native";
+import React, { useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { Provider as PaperProvider } from "react-native-paper";
 import { Provider as ReduxProvider } from "react-redux";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Notifications from "expo-notifications";
 
 import store from "./app/redux/store";
 import StackNavigator from "./app/Navigations/StackNavigator";
 import ToastComponent from "./app/Config/Toast";
 import themeContext from "./app/constants/themeContext";
 import { LightTheme, CustomDarkTheme } from "./app/constants/CustomTheme";
-
-// ⚡ Foreground notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+import NotificationProvider from "./app/Services/NotificationProvider";
 
 export default function App() {
   const [darkTheme, setDarkTheme] = useState(false);
 
   const toggleTheme = () => setDarkTheme((prev) => !prev);
-
-  useEffect(() => {
-    // ✅ Android notification channel
-    if (Platform.OS === "android") {
-      Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.MAX,
-        sound: "default",
-      });
-    }
-
-    // ✅ Listeners
-    const subscription = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log("📩 Notification received:", notification);
-      }
-    );
-
-    const responseSub =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("👆 Notification tapped:", response);
-      });
-
-    return () => {
-      subscription.remove();
-      responseSub.remove();
-    };
-  }, []);
 
   return (
     <ReduxProvider store={store}>
@@ -62,6 +24,9 @@ export default function App() {
             <NavigationContainer
               theme={darkTheme ? CustomDarkTheme : LightTheme}
             >
+              {/* ✅ Background push logic */}
+              <NotificationProvider />
+
               <ToastComponent />
               <StackNavigator />
             </NavigationContainer>
