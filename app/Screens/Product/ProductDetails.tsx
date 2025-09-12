@@ -10,10 +10,12 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  FlatList,
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Header from '../../layout/Header';
 import Button from '../../components/Button/Button';
@@ -27,8 +29,8 @@ import { RootState } from '../../redux/store';
 import { API_BASE_URL } from '../../Config/baseUrl';
 import { cartService } from '../../Services/CartService';
 import fallbackImage from '../../assets/images/item/pic6.png';
+import { productService, ProductItem, ProductFilters } from '../../Services/ProductService';
 
-// Define the CartItemWithDetails type
 interface CartItemWithDetails {
   sno: string;
   itemTagSno: string;
@@ -69,7 +71,7 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
   const dispatch = useDispatch();
-  
+
   const [product, setProduct] = useState<any>(null);
   const [activeSize, setActiveSize] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,8 +80,9 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const [isInCart, setIsInCart] = useState<boolean>(false);
   const [cartLoading, setCartLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Track which images have failed to load
+  const [relatedProducts, setRelatedProducts] = useState<ProductItem[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [hasMoreRelated, setHasMoreRelated] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [mainImageError, setMainImageError] = useState(false);
 
@@ -87,33 +90,68 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const sno = route?.params?.sno || '';
   console.log('Product SNO:', sno);
 
-  // Enhanced image processing function
+  const addToRecentlyViewed = async (itemSno: string) => {
+    try {
+      const token = await AsyncStorage.getItem('user_token');
+      if (!token) {
+        console.log('User not logged in, skipping recently viewed');
+        return;
+      }
+
+      const checkUrl = `${API_BASE_URL}/recently-viewed/check?itemSno=${itemSno}`;
+      const checkResponse = await fetch(checkUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        if (checkData.exists) {
+          console.log('Product already in recently viewed');
+          return;
+        }
+      }
+
+      const addUrl = `${API_BASE_URL}/recently-viewed/add?itemSno=${itemSno}`;
+      const addResponse = await fetch(addUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (addResponse.ok) {
+        console.log('Product added to recently viewed');
+      } else {
+        console.log('Failed to add to recently viewed');
+      }
+    } catch (error) {
+      console.error('Error adding to recently viewed:', error);
+    }
+  };
+
   const processImagePath = (imagePath: string | string[]) => {
     try {
       let parsedImages: string[] = [];
-      
       if (Array.isArray(imagePath)) {
-        // Already an array
         parsedImages = imagePath;
       } else if (typeof imagePath === 'string') {
         if (imagePath.startsWith('[') && imagePath.endsWith(']')) {
-          // JSON string format
           parsedImages = JSON.parse(imagePath);
         } else {
-          // Single image path
           parsedImages = [imagePath];
         }
       }
 
-      // Filter out empty or invalid paths and add base URL
       const validImages = parsedImages
         .filter(img => img && typeof img === 'string' && img.trim() !== '')
         .map(img => {
           const cleanImg = img.trim();
-          // Handle different base URL formats
           if (cleanImg.startsWith('http')) {
             return cleanImg;
-          } else if (cleanImg.startsWith('/uploads')) {
+          } else if (cleanImg.startsWith('/Uploads')) {
             return `https://app.bmgjewellers.com${cleanImg}`;
           } else {
             return `https://app.bmgjewellers.com/uploads/${cleanImg}`;
@@ -147,9 +185,7 @@ const ProductDetails = ({ navigation, route }: Props) => {
           setProduct(prod);
           if (prod.SIZENAME) setActiveSize(prod.SIZENAME);
 
-          // Process images using enhanced function
           const processedImages = processImagePath(prod.ImagePath);
-          
           if (processedImages.length > 0) {
             setImageArray(processedImages);
             setSelectedImage(processedImages[0]);
@@ -158,6 +194,8 @@ const ProductDetails = ({ navigation, route }: Props) => {
             setImageArray([]);
             setSelectedImage('');
           }
+
+          addToRecentlyViewed(prod.SNO);
         } else {
           setError('No product data available');
         }
@@ -177,7 +215,40 @@ const ProductDetails = ({ navigation, route }: Props) => {
     }
   }, [sno]);
 
-  // Check if product is in cart
+  useEffect(() => {
+    if (product?.ITEMNAME && product?.SUBITEMNAME) {
+      const fetchRelatedProducts = async (isLoadMore = false) => {
+        if (!hasMoreRelated || relatedLoading) return;
+
+        try {
+          setRelatedLoading(true);
+          if (!isLoadMore) {
+            productService.resetPagination();
+            setRelatedProducts([]); // Clear existing products for a fresh fetch
+          }
+
+          const filters: ProductFilters = {
+            itemName: product.ITEMNAME,
+            subItemName: product.SUBITEMNAME,
+          };
+
+          const items = await productService.getFilteredProducts(filters);
+          console.log('Related products response:', items);
+
+          const filteredItems = items.filter(item => item.SNO !== product.SNO);
+          setRelatedProducts(prev => isLoadMore ? [...prev, ...filteredItems] : filteredItems);
+          setHasMoreRelated(productService.hasMoreData());
+        } catch (err) {
+          console.error('Error fetching related products:', err);
+        } finally {
+          setRelatedLoading(false);
+        }
+      };
+
+      fetchRelatedProducts();
+    }
+  }, [product]);
+
   useEffect(() => {
     const checkCartStatus = async () => {
       if (product?.SNO) {
@@ -193,11 +264,8 @@ const ProductDetails = ({ navigation, route }: Props) => {
     checkCartStatus();
   }, [product, cartItems]);
 
-  // Handle individual image errors
   const handleImageError = (imageUri: string) => {
     setFailedImages(prev => new Set([...prev, imageUri]));
-    
-    // If the current selected image fails, try to select another one
     if (imageUri === selectedImage) {
       const workingImages = imageArray.filter(img => !failedImages.has(img) && img !== imageUri);
       if (workingImages.length > 0) {
@@ -208,10 +276,8 @@ const ProductDetails = ({ navigation, route }: Props) => {
     }
   };
 
-  // Handle main image error
   const handleMainImageError = () => {
     setMainImageError(true);
-    // Try to find another working image
     const workingImages = imageArray.filter(img => !failedImages.has(img) && img !== selectedImage);
     if (workingImages.length > 0) {
       setSelectedImage(workingImages[0]);
@@ -244,22 +310,21 @@ const ProductDetails = ({ navigation, route }: Props) => {
   const handleBuyNow = async () => {
     if (!product || !product.SNO) return;
 
-    // Format product data to match CartItemWithDetails type expected by Checkout
     const cartItem: CartItemWithDetails = {
-      sno: product.SNO,
-      itemTagSno: product.SNO,
+      sno: product.SNO || '',
+      itemTagSno: product.SNO || '',
       fullDetails: {
         MaterialFinish: product.MaterialFinish || '',
         Description: product.Description || '',
-        TAGNO: product.TAGNO || product.SNO,
+        TAGNO: product.TAGNO || product.SNO || '',
         Occasion: product.Occasion || '',
         RATE: product.RATE || product.GrandTotal || '0',
         GSTAmount: product.GSTAmount || '0',
-        TAGKEY: product.TAGKEY || product.SNO,
+        TAGKEY: product.TAGKEY || product.SNO || '',
         Gender: product.Gender || '',
         SIZEID: product.SIZEID || 0,
         Best_Design: product.Best_Design || false,
-        SNO: product.SNO,
+        SNO: product.SNO || '',
         CollectionType: product.CollectionType || '',
         ImagePath: selectedImage || (imageArray.length > 0 ? imageArray[0] : ''),
         NewArrival: product.NewArrival || false,
@@ -274,12 +339,11 @@ const ProductDetails = ({ navigation, route }: Props) => {
         GSTPer: product.GSTPer || '0',
         GrandTotal: product.GrandTotal || product.RATE || '0',
         ColorAccents: product.ColorAccents || '',
-        ITEMID: product.ITEMID || product.SNO,
+        ITEMID: product.ITEMID || product.SNO || '',
         ITEMNAME: product.ITEMNAME || product.SUBITEMNAME || 'Unnamed Product',
       },
     };
 
-    // First add to cart if not already in cart
     if (!isInCart) {
       setCartLoading(true);
       try {
@@ -301,7 +365,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
       }
     }
 
-    // Navigate to Checkout with formatted product data
     navigation.navigate('Checkout', {
       products: [cartItem],
       fromProductDetail: true,
@@ -310,6 +373,33 @@ const ProductDetails = ({ navigation, route }: Props) => {
 
   const handleExploreProducts = () => {
     navigation.navigate('Products');
+  };
+
+  const loadMoreRelatedProducts = () => {
+    if (product?.ITEMNAME && product?.SUBITEMNAME && hasMoreRelated && !relatedLoading) {
+      const fetchRelatedProducts = async () => {
+        try {
+          setRelatedLoading(true);
+          const filters: ProductFilters = {
+            itemName: product.ITEMNAME,
+            subItemName: product.SUBITEMNAME,
+          };
+
+          const items = await productService.getFilteredProducts(filters);
+          console.log('Related products response (load more):', items);
+
+          const filteredItems = items.filter(item => item.SNO !== product.SNO);
+          setRelatedProducts(prev => [...prev, ...filteredItems]);
+          setHasMoreRelated(productService.hasMoreData());
+        } catch (err) {
+          console.error('Error fetching more related products:', err);
+        } finally {
+          setRelatedLoading(false);
+        }
+      };
+
+      fetchRelatedProducts();
+    }
   };
 
   if (loading) {
@@ -374,8 +464,11 @@ const ProductDetails = ({ navigation, route }: Props) => {
     );
   }
 
-  // Get the working images for thumbnails
   const workingImages = imageArray.filter(img => !failedImages.has(img));
+  const groupedRelatedProducts: ProductItem[][] = [];
+  for (let i = 0; i < relatedProducts.length; i += 2) {
+    groupedRelatedProducts.push(relatedProducts.slice(i, i + 2));
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -391,7 +484,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Main Image */}
         <View style={{ position: 'relative' }}>
           <Image
             style={{ width: '100%', aspectRatio: 1 / 1.2, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 }}
@@ -404,7 +496,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
             resizeMode="cover"
           />
           
-          {/* No Image Available Overlay */}
           {(mainImageError || (!selectedImage && imageArray.length === 0)) && (
             <View style={{
               position: 'absolute',
@@ -420,7 +511,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
           )}
         </View>
 
-        {/* Thumbnails - Only show working images */}
         {workingImages.length > 1 && (
           <ScrollView
             horizontal
@@ -454,10 +544,9 @@ const ProductDetails = ({ navigation, route }: Props) => {
           </ScrollView>
         )}
 
-        {/* Product Info */}
         <View style={[GlobalStyleSheet.container, { marginTop: 5 }]}>
           <Text style={{ ...FONTS.Marcellus, fontSize: 24, color: colors.title }}>
-            {product.SUBITEMNAME?.trim()}
+            {product.SUBITEMNAME?.trim() || 'Unnamed Product'}
           </Text>
 
           <Text style={{ ...FONTS.fontRegular, fontSize: 15, color: colors.title, opacity: 0.7, marginTop: 10 }}>
@@ -469,8 +558,8 @@ const ProductDetails = ({ navigation, route }: Props) => {
               <Text style={{ ...FONTS.fontMedium, fontSize: 16, color: colors.title }}>Price:</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
                 <Text style={{ ...FONTS.fontMedium, fontSize: 20, color: colors.title }}>
-                  ₹{Number(product.GrandTotal) > 0
-                    ? Number(product.GrandTotal).toFixed(2)
+                  ₹{Number(product.GrandTotal || 0) > 0
+                    ? Number(product.GrandTotal || 0).toFixed(2)
                     : Number(product.RATE || 0).toFixed(2)}
                 </Text>
 
@@ -480,8 +569,8 @@ const ProductDetails = ({ navigation, route }: Props) => {
                   color: colors.title,
                   textDecorationLine: 'line-through',
                 }}>
-                  ₹{Number(product.GrandTotal) > 0
-                    ? (Number(product.GrandTotal) * 1.1).toFixed(2)
+                  ₹{Number(product.GrandTotal || 0) > 0
+                    ? (Number(product.GrandTotal || 0) * 1.1).toFixed(2)
                     : (Number(product.RATE || 0) * 1.1).toFixed(2)}
                 </Text>
               </View>
@@ -507,45 +596,43 @@ const ProductDetails = ({ navigation, route }: Props) => {
                     fontSize: 12,
                     color: activeSize === product.SIZENAME ? COLORS.white : colors.title,
                   }}>
-                    {product.SIZENAME}
+                    {product.SIZENAME || 'N/A'}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* Product Details Grid */}
           <View style={{ marginTop: 20 }}>
             <Text style={{ ...FONTS.fontSemiBold, fontSize: 16, color: colors.title, marginBottom: 10 }}>Product Details:</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 15 }}>
               {product.TAGKEY && (
                 <View style={{ minWidth: '45%' }}>
                   <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text, opacity: 0.7 }}>Tag No:</Text>
-                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.TAGKEY}</Text>
+                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.TAGKEY || 'N/A'}</Text>
                 </View>
               )}
               {product.GRSWT && (
                 <View style={{ minWidth: '45%' }}>
                   <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text, opacity: 0.7 }}>Weight:</Text>
-                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.GRSWT}g</Text>
+                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.GRSWT || '0'}g</Text>
                 </View>
               )}
               {product.PURITY && (
                 <View style={{ minWidth: '45%' }}>
                   <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text, opacity: 0.7 }}>Purity:</Text>
-                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.PURITY}%</Text>
+                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.PURITY || '0'}%</Text>
                 </View>
               )}
               {product.CATNAME && (
                 <View style={{ minWidth: '45%' }}>
                   <Text style={{ ...FONTS.fontRegular, fontSize: 14, color: colors.text, opacity: 0.7 }}>Category:</Text>
-                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.CATNAME}</Text>
+                  <Text style={{ ...FONTS.fontMedium, fontSize: 14, color: colors.title }}>{product.CATNAME || 'Uncategorized'}</Text>
                 </View>
               )}
             </View>
           </View>
 
-          {/* Description */}
           <View style={{ marginTop: 20 }}>
             <Text style={{ ...FONTS.fontSemiBold, fontSize: 16, color: colors.title }}>Description:</Text>
             <Text style={{
@@ -559,10 +646,68 @@ const ProductDetails = ({ navigation, route }: Props) => {
               {product.Description || 'Elevate your ethnic look with this premium silver ornament crafted with precision and attention to detail.'}
             </Text>
           </View>
+
+          <View style={{ marginTop: 30, paddingHorizontal: 15 }}>
+            <Text style={{ ...FONTS.fontSemiBold, fontSize: 18, color: colors.title, marginBottom: 15 }}>Related Products</Text>
+            {relatedProducts.length > 0 ? (
+              <FlatList
+                data={groupedRelatedProducts}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(_, index) => index.toString()}
+                renderItem={({ item: group }) => (
+                  <View style={{ flexDirection: 'column', marginRight: 15 }}>
+                    {group.map((item, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => navigation.navigate('ProductDetails', { sno: item.SNO })}
+                        style={{
+                          width: 160,
+                          marginBottom: idx === 0 ? 15 : 0,
+                          backgroundColor: colors.card,
+                          borderRadius: 10,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <Image
+                          source={item.ImagePaths?.[0] ? { uri: item.ImagePaths[0] } : fallbackImage}
+                          style={{ width: '100%', height: 200 }}
+                          resizeMode="cover"
+                        />
+                        <View style={{ padding: 10 }}>
+                          <Text numberOfLines={1} style={{ ...FONTS.fontMedium, color: colors.title }}>
+                            {item.SUBITEMNAME || 'Unnamed Product'}
+                          </Text>
+                          <Text style={{ ...FONTS.fontRegular, color: colors.text }}>
+                            ₹{item.GrandTotal || '0'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                    {group.length === 1 && (
+                      <View style={{ width: 160, height: 250 }} />
+                    )}
+                  </View>
+                )}
+                onEndReached={loadMoreRelatedProducts}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                  relatedLoading ? (
+                    <View style={{ padding: 10 }}>
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                    </View>
+                  ) : null
+                }
+              />
+            ) : (
+              <Text style={{ ...FONTS.fontRegular, color: colors.text }}>
+                {relatedLoading ? 'Loading related products...' : 'No related products found'}
+              </Text>
+            )}
+          </View>
         </View>
       </ScrollView>
 
-      {/* Bottom CTA */}
       <View style={[
         styles.bottomContainer,
         {
@@ -572,7 +717,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
       ]}>
         <View style={[GlobalStyleSheet.container, { paddingHorizontal: 15 }]}>
           <View style={styles.buttonRow}>
-            {/* Cart Button */}
             <View style={styles.buttonContainer}>
               <Button
                 title={
@@ -595,7 +739,6 @@ const ProductDetails = ({ navigation, route }: Props) => {
                 disabled={cartLoading}
               />
             </View>
-            {/* Buy Now Button */}
             <View style={styles.buttonContainer}>
               <Button
                 title="Buy Now"

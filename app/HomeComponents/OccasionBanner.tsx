@@ -52,7 +52,7 @@ export default function BannerSlider() {
 
     // Handle image loading errors
     const handleImageError = (item: any, index: number) => {
-        console.log("Image failed to load:", item.image_path);
+        // console.log("Image failed to load:", item.image_path);
         // You could set a fallback image here if needed
     };
 

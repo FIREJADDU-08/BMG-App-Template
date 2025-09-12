@@ -57,7 +57,7 @@ const BudgetCategoriesScreen = () => {
   }, []);
 
   const handleImageError = (imageUrl: string) => {
-    console.log('Image failed to load:', imageUrl);
+    // console.log('Image failed to load:', imageUrl);
     setFailedImages(prev => new Set(prev).add(imageUrl));
   };
 

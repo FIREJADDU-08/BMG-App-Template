@@ -11,10 +11,10 @@ import {
 import Carousel from "react-native-reanimated-carousel";
 import { useNavigation, useTheme } from "@react-navigation/native";
 import { getFestivalBanners } from "../Services/FestivalService";
+import { processImageUrl } from "../Services/RecentService"; // Import processImageUrl
 import { COLORS, FONTS, SIZES } from "../constants/theme";
-
+import {IMAGES} from "../constants/Images"
 const { width } = Dimensions.get("window");
-const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
 
 const FestivalSlider = () => {
   const navigation = useNavigation<any>();
@@ -24,6 +24,7 @@ const FestivalSlider = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchBanners();
@@ -34,13 +35,29 @@ const FestivalSlider = () => {
       setLoading(true);
       setError(null);
       const data = await getFestivalBanners();
-      setBanners(data);
+      // Process image URLs for each banner
+      const processedBanners = data.map((banner: any) => ({
+        ...banner,
+        image_path: processImageUrl(banner.image_path),
+      }));
+      setBanners(processedBanners);
     } catch (error) {
       console.error("Error fetching banners:", error);
       setError("Failed to load festival banners. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImageError = (imageUrl: string) => {
+    setFailedImages((prev) => new Set(prev).add(imageUrl));
+  };
+
+  const getWorkingImage = (banner: any): any => {
+    if (failedImages.has(banner.image_path)) {
+      return IMAGES.item11;
+    }
+    return { uri: banner.image_path } || IMAGES.item11;
   };
 
   if (loading) {
@@ -93,15 +110,21 @@ const FestivalSlider = () => {
             }
             style={styles.slide}
           >
-            <Image
-              source={{ uri: IMAGE_BASE_URL + item.image_path }}
-              style={styles.image}
-            />
-            {item.sub_item_name && (
-              <View style={styles.textContainer}>
-                <Text style={styles.slideTitle}>{item.sub_item_name}</Text>
-              </View>
-            )}
+            <View style={styles.imageContainer}>
+              <Image
+                source={getWorkingImage(item)}
+                style={styles.image}
+                onError={() => handleImageError(item.image_path)}
+              />
+              {/* {item.sub_item_name && (
+                <View style={styles.textContainer}>
+                  <Text style={styles.slideTitle}>{item.sub_item_name}</Text>
+                  {item.subtitle && (
+                    <Text style={styles.slideSubtitle}>{item.subtitle}</Text>
+                  )}
+                </View>
+              )} */}
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -148,6 +171,8 @@ const styles = StyleSheet.create({
   errorText: {
     marginBottom: 10,
     textAlign: "center",
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
   },
   retryButton: {
     backgroundColor: COLORS.primary,
@@ -158,6 +183,7 @@ const styles = StyleSheet.create({
   retryText: {
     color: COLORS.white,
     fontWeight: "bold",
+    ...FONTS.fontMedium,
   },
   slide: {
     borderRadius: SIZES.radius_md,
@@ -168,9 +194,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-  image: {
+  imageContainer: {
     width: "100%",
     height: 250,
+    position: "relative",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
     borderRadius: SIZES.radius_md,
     resizeMode: "cover",
   },
@@ -188,6 +219,13 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: SIZES.fontLg,
     fontWeight: "bold",
+    ...FONTS.Marcellus,
+  },
+  slideSubtitle: {
+    color: COLORS.white,
+    fontSize: SIZES.font,
+    ...FONTS.fontRegular,
+    marginTop: 4,
   },
   pagination: {
     flexDirection: "row",

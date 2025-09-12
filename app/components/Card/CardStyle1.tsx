@@ -127,7 +127,7 @@ const CardStyle1 = ({
   };
 
   const handleImageLoadError = () => {
-    console.log('Image load error for:', image);
+    // console.log('Image load error for:', image);
     setImageSrc(FALLBACK_IMAGE);
     setImageLoading(false);
     if (onImageError && typeof image === 'string') {
