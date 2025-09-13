@@ -15,6 +15,7 @@ export const COLORS = {
 	label: "#8A8A8A",
 	backgroundColor: "#fff",
 	black: "#000",
+	Notification: "#00f5fdff",
 
 	//light theme
 	card: "#fff",
