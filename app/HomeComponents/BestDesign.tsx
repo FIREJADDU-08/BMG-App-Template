@@ -19,7 +19,6 @@ import { fetchBestDesignProducts } from "../Services/BestDesignService";
 import { IMAGES } from "../constants/Images";
 import SvgUri from "react-native-svg";
 
-
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type BestDesignsPageProps = StackScreenProps<
@@ -28,7 +27,7 @@ type BestDesignsPageProps = StackScreenProps<
 >;
 
 const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const [bestDesignProducts, setBestDesignProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,37 +61,50 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
     () =>
       StyleSheet.create({
         header: {
-          marginBottom: SIZES.margin + 5,
+          marginBottom: SIZES.margin,
           paddingHorizontal: SIZES.padding,
         },
         loadingContainer: {
           height: SIZES.height * 0.4,
           justifyContent: "center",
           alignItems: "center",
+          backgroundColor: dark ? COLORS.darkBackground : COLORS.background,
+        },
+        loadingText: {
+          ...FONTS.fontMedium,
+          fontSize: SIZES.font,
+          color: dark ? COLORS.darkText : COLORS.text,
+          marginTop: SIZES.margin - 3,
         },
         errorContainer: {
-          padding: SIZES.padding + 5,
+          padding: SIZES.padding,
           alignItems: "center",
-          backgroundColor: colors.card,
-          borderRadius: SIZES.radius_sm,
+          backgroundColor: dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius_lg,
           borderWidth: 1,
-          borderColor: colors.border,
+          borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor,
           minHeight: SIZES.height * 0.2,
           margin: SIZES.margin,
         },
         errorText: {
           ...FONTS.fontMedium,
-          fontSize: SIZES.fontLg,
+          fontSize: SIZES.font,
           color: COLORS.danger,
           textAlign: "center",
           marginBottom: SIZES.margin,
         },
         emptyContainer: {
-          padding: SIZES.padding + 5,
+          padding: SIZES.padding,
           alignItems: "center",
-          backgroundColor: colors.card,
-          borderRadius: SIZES.radius_sm,
+          backgroundColor: dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius_lg,
           margin: SIZES.margin,
+        },
+        emptyText: {
+          ...FONTS.fontRegular,
+          fontSize: SIZES.font,
+          color: dark ? COLORS.darkTextLight : COLORS.textLight,
+          textAlign: "center",
         },
         gridContainer: {
           flexDirection: "column",
@@ -105,11 +117,11 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
           marginBottom: SIZES.margin,
         },
         cardWrapper: {
-          width: (SIZES.width - SIZES.padding * 2 - 10) / 2, // Responsive width
+          width: (SIZES.width - SIZES.padding * 2 - 10) / 2,
           marginBottom: SIZES.margin,
         },
       }),
-    [colors.card, colors.border]
+    [dark, colors.card, colors.border]
   );
 
   // Enhanced Loading Component
@@ -117,12 +129,7 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={COLORS.primary} />
       <Text
-        style={{
-          ...FONTS.fontMedium,
-          fontSize: SIZES.fontLg,
-          color: colors.text,
-          marginTop: SIZES.margin - 3,
-        }}
+        style={styles.loadingText}
         accessibilityLiveRegion="polite"
       >
         Loading best designs...
@@ -133,7 +140,7 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
   // Enhanced Error Component
   const ErrorComponent = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
     <View style={styles.errorContainer}>
-      <Text style={{ fontSize: SIZES.h2, marginBottom: SIZES.margin - 5 }}>
+      <Text style={{ fontSize: SIZES.h2, marginBottom: SIZES.margin - 5, color: COLORS.danger }}>
         ⚠️
       </Text>
       <Text
@@ -150,7 +157,7 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
         style={{
           marginTop: SIZES.margin,
           width: SIZES.width * 0.4,
-          borderRadius: SIZES.radius_sm,
+          borderRadius: SIZES.radius_lg,
         }}
         textStyle={{ ...FONTS.fontSemiBold, fontSize: SIZES.font }}
         accessibilityLabel="Retry loading best designs"
@@ -158,20 +165,32 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
     </View>
   );
 
+  // Empty Component
+  const EmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text
+        style={styles.emptyText}
+        accessibilityRole="alert"
+      >
+        No best design products available
+      </Text>
+    </View>
+  );
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: dark ? COLORS.darkBackground : COLORS.background }}>
       <View
         style={[
           GlobalStyleSheet.container,
-          { paddingVertical: SIZES.padding + 5 },
+          { paddingVertical: SIZES.padding },
         ]}
       >
         <View style={styles.header}>
           <Text
-            style={{ ...FONTS.Marcellus, fontSize: SIZES.h3, color: colors.title }}
+            style={{ ...FONTS.h3, fontSize: SIZES.h3, color: dark ? COLORS.darkTitle : COLORS.title, fontFamily: "TrajanProBold" }}
             accessibilityRole="header"
           >
-            Best Designs
+            Best Design
           </Text>
         </View>
 
@@ -214,8 +233,8 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
                             onPress2={() => {}} // Cart action placeholder
                             closebtn={
                               <SvgUri
-                                width={SIZES.h6 + 4}
-                                height={SIZES.h6 + 4}
+                                width={SIZES.fontLg + 4}
+                                height={SIZES.fontLg + 4}
                                 source={{ uri: ICONS.closeOpen }}
                                 fill={COLORS.danger}
                               />
@@ -229,18 +248,7 @@ const BestDesignsPage = ({ navigation }: BestDesignsPageProps) => {
             )}
           </View>
         ) : (
-          <View style={styles.emptyContainer}>
-            <Text
-              style={{
-                ...FONTS.fontRegular,
-                fontSize: SIZES.fontLg,
-                color: colors.textLight,
-              }}
-              accessibilityRole="alert"
-            >
-              No best design products available
-            </Text>
-          </View>
+          <EmptyComponent />
         )}
       </View>
     </View>

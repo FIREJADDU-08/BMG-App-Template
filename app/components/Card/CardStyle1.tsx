@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { FONTS, COLORS } from '../../constants/theme';
+import { FONTS, COLORS, SIZES } from '../../constants/theme';
 import { useTheme } from '@react-navigation/native';
 import { IMAGES } from '../../constants/Images';
 import { useDispatch } from 'react-redux';
@@ -63,8 +63,7 @@ const CardStyle1 = ({
   product,
   cartItemId,
 }: Props) => {
-  const theme = useTheme();
-  const { colors } = theme;
+  const { colors, dark } = useTheme();
   const dispatch = useDispatch();
 
   const FALLBACK_IMAGE = IMAGES.item12;
@@ -127,7 +126,6 @@ const CardStyle1 = ({
   };
 
   const handleImageLoadError = () => {
-    // console.log('Image load error for:', image);
     setImageSrc(FALLBACK_IMAGE);
     setImageLoading(false);
     if (onImageError && typeof image === 'string') {
@@ -139,17 +137,15 @@ const CardStyle1 = ({
     setImageLoading(false);
   };
 
-  
-
   return (
     <View
       style={[
         styles.cardContainer,
         Platform.OS === 'ios' && {
-          backgroundColor: card3 ? undefined : colors.card,
-          borderRadius: 20,
+          backgroundColor: card3 ? undefined : dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius_lg,
         },
-        { shadowColor: 'rgba(195, 123, 95, 0.25)' },
+        { shadowColor: dark ? COLORS.darkShadow : COLORS.shadow },
       ]}
     >
       <TouchableOpacity
@@ -157,7 +153,7 @@ const CardStyle1 = ({
         style={[
           styles.cardTouchable,
           {
-            backgroundColor: card3 ? undefined : colors.card,
+            backgroundColor: card3 ? undefined : dark ? COLORS.darkCard : COLORS.card,
             alignItems: card3 ? 'center' : undefined,
           },
         ]}
@@ -168,7 +164,7 @@ const CardStyle1 = ({
           style={[
             styles.imageContainer,
             {
-              backgroundColor: card3 ? colors.card : undefined,
+              backgroundColor: card3 ? dark ? COLORS.darkCard : COLORS.card : undefined,
               width: card3 ? 127 : undefined,
               height: card3 ? 127 : Cardstyle4 ? undefined : 170,
               borderRadius: card3 ? 40 : undefined,
@@ -176,7 +172,7 @@ const CardStyle1 = ({
           ]}
         >
           {imageLoading && (
-            <View style={styles.loadingOverlay}>
+            <View style={[styles.loadingOverlay, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]}>
               <ActivityIndicator size="small" color={COLORS.primary} />
             </View>
           )}
@@ -195,7 +191,7 @@ const CardStyle1 = ({
           style={[
             styles.infoContainer,
             {
-              backgroundColor: card3 ? undefined : colors.card,
+              backgroundColor: card3 ? undefined : dark ? COLORS.darkCard : COLORS.card,
               alignItems: card3 ? 'center' : undefined,
             },
           ]}
@@ -205,10 +201,10 @@ const CardStyle1 = ({
               style={[
                 styles.titleText,
                 {
-                  fontSize: card3 ? 16 : 18,
-                  color: colors.title,
+                  fontSize: card3 ? SIZES.font : SIZES.fontLg,
+                  color: dark ? COLORS.darkTitle : COLORS.title,
                   textAlign: card3 ? 'center' : 'left',
-                  paddingRight: card3 ? 0 : 20,
+                  paddingRight: card3 ? 0 : SIZES.padding * 2,
                 },
               ]}
               numberOfLines={2}
@@ -218,7 +214,9 @@ const CardStyle1 = ({
           ) : null}
 
           {review ? (
-            <Text style={styles.reviewText}>{String(review)}</Text>
+            <Text style={[styles.reviewText, { color: dark ? COLORS.darkTextLight : COLORS.textLight }]}>
+              {String(review)}
+            </Text>
           ) : null}
 
           <View
@@ -231,7 +229,7 @@ const CardStyle1 = ({
               <Text
                 style={[
                   styles.priceText,
-                  { fontSize: card3 ? 16 : 18, color: colors.title },
+                  { fontSize: card3 ? SIZES.font : SIZES.fontLg, color: dark ? COLORS.darkTitle : COLORS.title },
                 ]}
               >
                 {formatPrice(price)}
@@ -242,11 +240,7 @@ const CardStyle1 = ({
               <Text
                 style={[
                   styles.discountText,
-                  {
-                    color: theme.dark
-                      ? 'rgba(255,255,255, .4)'
-                      : 'rgba(0, 0, 0, 0.40)',
-                  },
+                  { color: dark ? COLORS.darkTextLight : COLORS.textLight },
                 ]}
               >
                 {formatPrice(discount)}
@@ -258,11 +252,11 @@ const CardStyle1 = ({
         {/* Wishlist Button */}
         {!removelikebtn && !likebtn && (
           <View style={styles.wishlistButtonContainer}>
-            <TouchableOpacity style={styles.iconButton} onPress={handleWishlistPress}>
+            <TouchableOpacity style={[styles.iconButton, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]} onPress={handleWishlistPress}>
               <Ionicons
                 name={wishlistActive ? 'heart' : 'heart-outline'}
-                size={20}
-                color={wishlistActive ? COLORS.danger : colors.title}
+                size={SIZES.fontLg}
+                color={wishlistActive ? COLORS.danger : dark ? COLORS.darkTitle : COLORS.title}
               />
             </TouchableOpacity>
           </View>
@@ -285,8 +279,8 @@ const CardStyle1 = ({
             >
               <Feather
                 name={cartActive ? 'trash-2' : 'shopping-cart'}
-                size={18}
-                color={colors.card}
+                size={SIZES.font}
+                color={dark ? COLORS.darkCard : COLORS.card}
               />
             </View>
           </TouchableOpacity>
@@ -300,12 +294,12 @@ const styles = StyleSheet.create({
   cardContainer: {
     shadowOffset: { width: 2, height: 20 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: SIZES.radius,
     elevation: 5,
-    marginBottom: 15,
+    marginBottom: SIZES.margin,
   },
   cardTouchable: {
-    borderRadius: 20,
+    borderRadius: SIZES.radius_lg,
     borderColor: 'transparent',
     overflow: 'hidden',
   },
@@ -323,49 +317,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: COLORS.overlay,
   },
   productImage: {
     height: undefined,
     width: '100%',
     aspectRatio: 1 / 1,
-    borderRadius: 10,
+    borderRadius: SIZES.radius,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
   infoContainer: {
-    padding: 10,
+    padding: SIZES.padding,
     paddingTop: 0,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: SIZES.radius_lg,
+    borderBottomRightRadius: SIZES.radius_lg,
   },
   titleText: {
-    ...FONTS.Marcellus,
-    marginBottom: 4,
+    ...FONTS.fontMedium,
+    marginBottom: SIZES.margin / 2,
   },
   reviewText: {
-    ...FONTS.fontXs,
-    color: COLORS.gray,
-    marginBottom: 4,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontXs,
+    color: COLORS.textLight,
+    marginBottom: SIZES.margin / 2,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: 5,
+    marginTop: SIZES.margin / 2,
   },
   priceContainerCard4: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    bottom: SIZES.padding,
+    right: SIZES.padding,
     flexDirection: 'column',
   },
   priceText: {
-    ...FONTS.Marcellus,
+    ...FONTS.fontSemiBold,
   },
   discountText: {
-    ...FONTS.Marcellus,
-    fontSize: 14,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontSm,
     textDecorationLine: 'line-through',
     marginRight: 5,
   },
@@ -380,7 +375,7 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: COLORS.overlay,
   },
   cartButtonContainer: {
     position: 'absolute',
@@ -392,8 +387,8 @@ const styles = StyleSheet.create({
     width: 35,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomRightRadius: 20,
-    borderTopLeftRadius: 20,
+    borderBottomRightRadius: SIZES.radius_lg,
+    borderTopLeftRadius: SIZES.radius_lg,
   },
 });
 

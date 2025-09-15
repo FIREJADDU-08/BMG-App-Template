@@ -522,9 +522,9 @@ const Wishlist = ({ navigation }: WishlistScreenProps) => {
     }
   }, [dispatch]);
 
-  const scrollToTop = useCallback(() => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  }, []);
+  // const scrollToTop = useCallback(() => {
+  //   scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  // }, []);
 
   // Enhanced render functions
   const renderItem = useCallback((data: WishlistItem, index: number) => {
@@ -704,7 +704,7 @@ return (
       onHide={hideToast}
     />
 
-    {hasItems && (
+    {/* {hasItems && (
       <TouchableOpacity
         style={[enhancedStyles.scrollToTopButton, { backgroundColor: colors.primary }]}
         onPress={scrollToTop}
@@ -713,7 +713,7 @@ return (
       >
         <Feather name="arrow-up" size={20} color="white" />
       </TouchableOpacity>
-    )}
+    )} */}
   </SafeAreaView>
 );
 
@@ -865,6 +865,7 @@ const enhancedStyles = {
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+    alignSelf: 'center',
   },
   loadingContainer: {
     backgroundColor: 'white',
@@ -876,11 +877,13 @@ const enhancedStyles = {
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    alignSelf: 'center',
   },
   loadingText: {
     marginTop: 10,
     color: COLORS.primary,
     ...FONTS.fontMedium,
+    alignSelf: 'center',
   },
   emptyContainer: {
     alignItems: 'center',

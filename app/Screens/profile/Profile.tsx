@@ -27,15 +27,14 @@ const btnData = [
         navigate: 'Wishlist',
     },
     {
-        title: "Coupons",
-        navigate: 'Coupons',
+        title: "Cart",
+        navigate: 'MyCart',
     },
     {
         title: "Address",
         navigate: 'SaveAddress',
     },
 ]
-
 
 const ListwithiconData = [
     {
@@ -46,40 +45,50 @@ const ListwithiconData = [
                 title: "Your Profile",
                 navigate: 'EditProfile'
             },
-            {
-                icon: IMAGES.card2,
-                title: "Saved Cards & Wallet",
-                navigate: 'Payment'
-            },
+            // {
+            //     icon: IMAGES.card2,
+            //     title: "Saved Cards & Wallet",
+            //     navigate: 'Payment'
+            // },
             {
                 icon: IMAGES.map2,
                 title: "Saved Addresses",
                 navigate: 'SaveAddress'
             },
-            {
-                icon: IMAGES.translation,
-                title: "Select Language",
-                navigate: 'Language'
-            },
+            // {
+            //     icon: IMAGES.translation,
+            //     title: "Select Language",
+            //     navigate: 'Language'
+            // },
             {
                 icon: IMAGES.bell2,
                 title: "Notifications Settings",
                 navigate: 'Notification'
             },
+            {
+                icon: IMAGES.logout,
+                title: "Logout",
+                isLogout: true // Add a flag to identify the logout option
+            },
         ],
     },
     {
-        title: 'My Activity',
+        title: 'Support',
         data: [
             {
-                icon: IMAGES.star,
-                title: "Reviews",
-                navigate: 'WriteReview'
+                icon: IMAGES.phone,
+                title: "Help Center",
+                navigate: 'HelpCenter'
             },
             {
                 icon: IMAGES.comment,
-                title: "Questions & Answers",
-                navigate: 'Questions'
+                title: "Privacy Policy",
+                navigate: 'PrivacyPolicy'
+            },
+            {
+                icon: IMAGES.cuting,
+                title: "Terms & Conditions",
+                navigate: 'TermsConditions'
             },
         ],
     },
@@ -105,7 +114,34 @@ const Profile = ({ navigation }: ProfileScreenProps) => {
         getUserDetails();
     }, []);
 
-
+    const handleLogout = () => {
+        Alert.alert(
+            "Logout",
+            "Are you sure you want to logout?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: "Logout",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await logoutUser();
+                            setProfileImage(null); // 👈 clear context image
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'SignIn' }],
+                            });
+                        } catch (err) {
+                            console.error('Logout error:', err);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     return (
 
@@ -114,7 +150,7 @@ const Profile = ({ navigation }: ProfileScreenProps) => {
                 null
                 :
                 <LinearGradient colors={['#C37B5F', '#F9F5F3']}
-                    style={{ width: '100%', height: 230, top: 0, position: 'absolute' }}
+                    style={{ width: '100%', height: 300, top: 0, position: 'absolute' }}
                 >
                 </LinearGradient>
             }
@@ -127,45 +163,6 @@ const Profile = ({ navigation }: ProfileScreenProps) => {
                         />
                         <Text style={{ ...FONTS.Marcellus, fontSize: 24, color: colors.title, marginTop: 8 }}>BMG</Text>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => {
-                            Alert.alert(
-                                "Logout",
-                                "Are you sure you want to logout?",
-                                [
-                                    {
-                                        text: "Cancel",
-                                        style: "cancel"
-                                    },
-                                    {
-                                        text: "Logout",
-                                        style: "destructive",
-                                        onPress: async () => {
-                                            try {
-                                                await logoutUser();
-                                                setProfileImage(null); // 👈 clear context image
-                                                navigation.reset({
-                                                    index: 0,
-                                                    routes: [{ name: 'SignIn' }],
-                                                });
-                                            } catch (err) {
-                                                console.error('Logout error:', err);
-                                            }
-                                        }
-                                    }
-                                ]
-                            );
-                        }}
-                        style={{ flexDirection: 'row', alignItems: 'center' }}
-                    >
-                        <Image
-                            style={{ height: 18, width: 18, resizeMode: 'contain', tintColor: colors.title }}
-                            source={IMAGES.logout}
-                        />
-                        <Text style={{ ...FONTS.fontRegular, fontSize: 16, color: colors.title, marginLeft: 5 }}>Logout</Text>
-                    </TouchableOpacity>
-
-
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 20, paddingBottom: 30 }}>
                     <View style={{ height: 45, width: 45, borderRadius: 50, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center' }}>
@@ -177,8 +174,6 @@ const Profile = ({ navigation }: ProfileScreenProps) => {
                                     : IMAGES.user2
                             }
                         />
-
-
                     </View>
                     <Text style={{ ...FONTS.Marcellus, fontSize: 24, color: colors.title }}> Hello, {username || 'Guest'}</Text>
                 </View>
@@ -230,14 +225,15 @@ const Profile = ({ navigation }: ProfileScreenProps) => {
                                         style={{
                                             height: 20,
                                             width: 20,
-                                            tintColor: COLORS.primary,
+                                            tintColor: item.isLogout ? COLORS.danger : COLORS.primary,
                                             resizeMode: 'contain',
                                         }}
                                         source={item.icon}
                                     />
                                 }
                                 title={item.title}
-                                onPress={() => navigation.navigate(item.navigate)}
+                                onPress={item.isLogout ? handleLogout : () => navigation.navigate(item.navigate)}
+                                titleStyle={item.isLogout ? { color: COLORS.danger } : {}}
                             />
                         )}
                         renderSectionHeader={({ section: { title } }) => (

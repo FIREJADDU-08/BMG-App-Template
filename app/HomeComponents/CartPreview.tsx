@@ -44,15 +44,15 @@ const CartItemsPreview = ({
   const { colors, dark } = useTheme();
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: colors.card }]}>
+    <View style={[styles.wrapper, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
       <View style={[GlobalStyleSheet.container, styles.innerContainer]}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.title }]}>
+          <Text style={[styles.headerTitle, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
             Items In Your Cart
           </Text>
           <TouchableOpacity onPress={() => navigation.navigate('MyCart')}>
-            <Text style={[styles.viewCart, { color: colors.title }]}>
+            <Text style={[styles.viewCart, { color: dark ? COLORS.darkText : COLORS.text }]}>
               View Cart
             </Text>
           </TouchableOpacity>
@@ -60,8 +60,11 @@ const CartItemsPreview = ({
 
         {/* Loader */}
         {loading ? (
-          <View style={styles.centerContent}>
+          <View style={[styles.centerContent, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
             <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={[styles.loadingText, { color: dark ? COLORS.darkText : COLORS.text }]}>
+              Loading cart items...
+            </Text>
           </View>
         ) : cartProducts.length > 0 ? (
           <>
@@ -71,7 +74,7 @@ const CartItemsPreview = ({
               return (
                 <TouchableOpacity
                   key={`${item.sno}-${index}`}
-                  style={styles.cartItem}
+                  style={[styles.cartItem, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
                   onPress={() =>
                     navigation.navigate('ProductDetails', {
                       sno: item.fullDetails?.SNO,
@@ -82,15 +85,17 @@ const CartItemsPreview = ({
                   <Image
                     style={[
                       styles.productImage,
-                      { borderColor: colors.border },
+                      { borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor },
                     ]}
                     source={{ uri: imageUri }}
+                    defaultSource={IMAGES.item11}
+                    resizeMode="cover"
                   />
 
                   {/* Product Details */}
                   <View style={styles.productInfo}>
                     <Text
-                      style={[styles.productName, { color: colors.title }]}
+                      style={[styles.productName, { color: dark ? COLORS.darkTitle : COLORS.title }]}
                       numberOfLines={1}
                     >
                       {item.fullDetails?.ITEMNAME || 'Unknown Product'}
@@ -98,12 +103,10 @@ const CartItemsPreview = ({
 
                     <View style={styles.ratingRow}>
                       <Text
-                        style={[styles.price, { color: colors.title }]}
+                        style={[styles.price, { color: dark ? COLORS.darkTitle : COLORS.title }]}
                       >
                         ₹
-                        {parseFloat(item.fullDetails?.GrandTotal || '0').toFixed(
-                          2
-                        )}
+                        {parseFloat(item.fullDetails?.GrandTotal || '0').toFixed(2)}
                       </Text>
                       <Image
                         style={styles.ratingIcon}
@@ -112,7 +115,7 @@ const CartItemsPreview = ({
                       <Text
                         style={[
                           styles.reviewText,
-                          { color: dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' },
+                          { color: dark ? COLORS.darkTextLight : COLORS.textLight },
                         ]}
                       >
                         (2k review)
@@ -120,7 +123,7 @@ const CartItemsPreview = ({
                     </View>
 
                     <Text
-                      style={[styles.quantity, { color: colors.title }]}
+                      style={[styles.quantity, { color: dark ? COLORS.darkText : COLORS.text }]}
                     >
                       Quantity: <Text style={styles.quantityValue}>1</Text>
                     </Text>
@@ -128,13 +131,13 @@ const CartItemsPreview = ({
 
                   {/* Remove Button */}
                   <TouchableOpacity
-                    style={[styles.removeBtn, { backgroundColor: colors.background }]}
+                    style={[styles.removeBtn, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}
                     onPress={() => handleRemove(item)}
                   >
                     <Image
                       style={[
                         styles.removeIcon,
-                        { tintColor: dark ? COLORS.card : COLORS.title },
+                        { tintColor: dark ? COLORS.darkText : COLORS.title },
                       ]}
                       source={IMAGES.close}
                     />
@@ -150,17 +153,17 @@ const CartItemsPreview = ({
                 onPress={() => navigation.navigate('MyCart')}
                 btnRounded
                 outline
-                icon={<Feather size={24} color={colors.card} name="arrow-right" />}
-                color={colors.card}
+                icon={<Feather size={SIZES.fontLg} color={dark ? COLORS.darkCard : COLORS.card} name="arrow-right" />}
+                color={dark ? COLORS.darkCard : COLORS.card}
                 text={COLORS.primary}
               />
             </View>
           </>
         ) : (
           /* Empty State */
-          <View style={styles.centerContent}>
-            <Feather name="shopping-cart" size={30} color={COLORS.primary} />
-            <Text style={[styles.emptyText, { color: colors.text }]}>
+          <View style={[styles.centerContent, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
+            <Feather name="shopping-cart" size={SIZES.fontXxl} color={COLORS.primary} />
+            <Text style={[styles.emptyText, { color: dark ? COLORS.darkText : COLORS.text }]}>
               Your cart is empty
             </Text>
           </View>
@@ -174,6 +177,7 @@ const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
     paddingBottom: SIZES.padding / 2,
+    backgroundColor: COLORS.background,
   },
   innerContainer: {
     marginVertical: SIZES.margin / 2,
@@ -182,30 +186,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: SIZES.padding,
   },
   headerTitle: {
-    ...FONTS.Marcellus,
-    fontSize: SIZES.h5,
+    ...FONTS.h3,
+    fontSize: SIZES.h4,
+    color: COLORS.title,
   },
   viewCart: {
     ...FONTS.fontMedium,
     fontSize: SIZES.fontSm,
+    color: COLORS.text,
   },
   centerContent: {
     alignItems: 'center',
     paddingVertical: SIZES.padding,
+    borderRadius: SIZES.radius_lg,
+  },
+  loadingText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    marginTop: SIZES.margin / 2,
+    color: COLORS.text,
   },
   cartItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginTop: SIZES.margin,
+    padding: SIZES.padding - 4,
+    borderRadius: SIZES.radius_lg,
+    backgroundColor: COLORS.card,
   },
   productImage: {
     width: 75,
     height: 75,
     borderRadius: SIZES.radius_md,
     borderWidth: 1,
+    borderColor: COLORS.borderColor,
   },
   productInfo: {
     flex: 1,
@@ -213,6 +231,7 @@ const styles = StyleSheet.create({
   productName: {
     ...FONTS.fontMedium,
     fontSize: SIZES.font,
+    color: COLORS.title,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -223,6 +242,7 @@ const styles = StyleSheet.create({
   price: {
     ...FONTS.fontSemiBold,
     fontSize: SIZES.fontLg,
+    color: COLORS.title,
   },
   ratingIcon: {
     height: 12,
@@ -232,15 +252,18 @@ const styles = StyleSheet.create({
   reviewText: {
     ...FONTS.fontRegular,
     fontSize: SIZES.fontSm,
+    color: COLORS.textLight,
   },
   quantity: {
     ...FONTS.fontRegular,
     fontSize: SIZES.font,
     marginTop: 2,
+    color: COLORS.text,
   },
   quantityValue: {
     ...FONTS.fontBold,
     fontSize: SIZES.font,
+    color: COLORS.text,
   },
   removeBtn: {
     height: 40,
@@ -248,6 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.background,
   },
   removeIcon: {
     height: 18,
@@ -256,10 +280,13 @@ const styles = StyleSheet.create({
   },
   checkoutBtn: {
     marginTop: SIZES.margin,
+    paddingHorizontal: SIZES.padding,
   },
   emptyText: {
     ...FONTS.fontRegular,
+    fontSize: SIZES.font,
     marginTop: SIZES.margin / 2,
+    color: COLORS.text,
   },
 });
 

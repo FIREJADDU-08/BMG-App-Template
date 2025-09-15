@@ -10,6 +10,7 @@ import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { trackOrder } from '../../Services/OrderTrackService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type TrackOrderScreenProps = StackScreenProps<RootStackParamList, 'Trackorder'>;
 
@@ -35,7 +36,7 @@ interface OrderData {
   timeline: TimelineItem[];
   order_id: string;
   items: OrderItem[];
-  canCancel?: boolean;
+  canCancel: boolean;
 }
 
 interface DisplayTimelineItem {
@@ -56,57 +57,57 @@ const Trackorder = ({ route, navigation }: TrackOrderScreenProps) => {
   const [error, setError] = useState<string | null>(null);
   const [showAllProducts, setShowAllProducts] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [cancelling, setCancelling] = useState<boolean>(false); // Added missing state
 
   // Function to process image paths
-// Function to process image paths - Updated to handle JSON array strings
-const processImagePath = (imagePath: string | null | undefined): any => {
-  if (!imagePath) {
-    return IMAGES.placeholder; // Use placeholder if no image path
-  }
-  
-  try {
-    // Parse the JSON string to get the array of image paths
-    const imageArray = JSON.parse(imagePath);
+  const processImagePath = (imagePath: string | null | undefined): any => {
+    if (!imagePath) {
+      return IMAGES.placeholder;
+    }
     
-    // If it's an array and has at least one image, use the first one
-    if (Array.isArray(imageArray) && imageArray.length > 0) {
-      let firstImage = imageArray[0];
+    try {
+      // Parse the JSON string to get the array of image paths
+      const imageArray = JSON.parse(imagePath);
       
-      // If it's already a full URL, use it directly
-      if (firstImage.startsWith('http')) {
-        return { uri: firstImage };
-      }
-      
-      // If it's a relative path, construct the full URL
-      if (firstImage.startsWith('/')) {
-        const baseUrl = 'https://app.bmgjewellers.com';
+      // If it's an array and has at least one image, use the first one
+      if (Array.isArray(imageArray) && imageArray.length > 0) {
+        let firstImage = imageArray[0];
+        
+        // If it's already a full URL, use it directly
+        if (firstImage.startsWith('http')) {
+          return { uri: firstImage };
+        }
+        
+        // If it's a relative path, construct the full URL
+        if (firstImage.startsWith('/')) {
+          const baseUrl = 'https://app.bmgjewellers.com';
+          return { uri: `${baseUrl}${firstImage}` };
+        }
+        
+        // If it's just a filename, construct the path
+        const baseUrl = 'https://app.bmgjewellers.com/static/media/';
         return { uri: `${baseUrl}${firstImage}` };
       }
+    } catch (parseError) {
+      console.log('Error parsing image path JSON:', parseError);
       
-      // If it's just a filename, construct the path
+      // Fallback: treat as a single string if JSON parsing fails
+      if (imagePath.startsWith('http')) {
+        return { uri: imagePath };
+      }
+      
+      if (imagePath.startsWith('/')) {
+        const baseUrl = 'https://app.bmgjewellers.com';
+        return { uri: `${baseUrl}${imagePath}` };
+      }
+      
       const baseUrl = 'https://app.bmgjewellers.com/static/media/';
-      return { uri: `${baseUrl}${firstImage}` };
-    }
-  } catch (parseError) {
-    console.log('Error parsing image path JSON:', parseError);
-    
-    // Fallback: treat as a single string if JSON parsing fails
-    if (imagePath.startsWith('http')) {
-      return { uri: imagePath };
-    }
-    
-    if (imagePath.startsWith('/')) {
-      const baseUrl = 'https://app.bmgjewellers.com';
       return { uri: `${baseUrl}${imagePath}` };
     }
     
-    const baseUrl = 'https://app.bmgjewellers.com/static/media/';
-    return { uri: `${baseUrl}${imagePath}` };
-  }
-  
-  // Final fallback to placeholder
-  return IMAGES.placeholder;
-};
+    // Final fallback to placeholder
+    return IMAGES.placeholder;
+  };
 
   // Fetch order details
   const fetchOrder = async (isRefresh = false) => {
@@ -143,6 +144,64 @@ const processImagePath = (imagePath: string | null | undefined): any => {
     Alert.alert(title, message, [{ text: 'OK', style: 'default' }]);
   };
 
+  const handleCancelOrder = () => {
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setCancelling(true);
+              console.log('Cancelling order:', orderId);
+              const paymentMode = orderData?.paymentMode || 'ONLINE';
+              const paymentStatus = orderData?.paymentStatus || 'PENDING';
+              // console.log('Cancelling order with payment mode:', paymentMode, 'and payment status:', paymentStatus);
+              const token = await AsyncStorage.getItem('user_token');
+
+              // API call to cancel the order
+              const response = await fetch('https://app.bmgjewellers.com/api/v1/order/update-status', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`, // Replace with actual token
+                },
+                body: JSON.stringify({
+                  orderId: orderId,
+                  newStatus: 'CANCELLED',
+                  remarks: 'Order cancelled by user',
+                  paymentMode: paymentMode,
+                  paymentStatus: paymentStatus
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok) {
+                // Refresh order data after successful cancellation
+                fetchOrder();
+                showAlert('Success', 'Order has been cancelled successfully.');
+              } else {
+                showAlert('Error', result.message || 'Failed to cancel order.');
+              }
+            } catch (error) {
+              console.error('Cancel order error:', error);
+              showAlert('Error', 'An error occurred while cancelling the order.');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Create timeline based on new API structure
   const createTimeline = (): DisplayTimelineItem[] => {
     if (!orderData?.timeline) return [];
@@ -176,7 +235,7 @@ const processImagePath = (imagePath: string | null | undefined): any => {
     const orderFlow = [
       { key: 'ORDER_CONFIRMED', title: 'Order Confirmed', desc: 'Your order has been placed successfully.' },
       { key: 'ORDER_PROCESSED', title: 'Order Processed', desc: 'Your order has been processed.' },
-      { key: 'ORDER_PACKED', title: 'Order Packed', desc: 'Your order has been packed.' },
+      { key: 'PACKED', title: 'Order Packed', desc: 'Your order has been packed.' },
       { key: 'READY_TO_SHIP', title: 'Ready to Ship', desc: 'Your order is ready to be shipped.' },
       { key: 'SHIPPED', title: 'Shipped', desc: 'Your order has been shipped.' },
       { key: 'OUT_FOR_DELIVERY', title: 'Out for Delivery', desc: 'Your order is out for delivery.' },
@@ -188,12 +247,12 @@ const processImagePath = (imagePath: string | null | undefined): any => {
       switch (currentStatus) {
         case 'ORDER_CONFIRMED': return 0;
         case 'ORDER_PROCESSED': return 1;
-        case 'ORDER_PACKED': return 2;
+        case 'PACKED': return 2;
         case 'READY_TO_SHIP': return 3;
         case 'SHIPPED': return 4;
         case 'OUT_FOR_DELIVERY': return 5;
         case 'DELIVERED': return 6;
-        default: return orderData.timeline.length - 1; // Default to last completed step
+        default: return orderData.timeline.length - 1;
       }
     };
 
@@ -253,12 +312,26 @@ const processImagePath = (imagePath: string | null | undefined): any => {
     return timeline;
   };
 
+  // Filter out invalid items (null/empty items)
+  const getValidItems = () => {
+    if (!orderData?.items) return [];
+    return orderData.items.filter(item => 
+      item && 
+      item.productName && 
+      item.quantity > 0 && 
+      item.price !== null && 
+      item.price !== undefined
+    );
+  };
+
   const getTotalItems = () => {
-    return orderData?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+    const validItems = getValidItems();
+    return validItems.reduce((total, item) => total + item.quantity, 0);
   };
 
   const getTotalPrice = () => {
-    return orderData?.items?.reduce((total: number, item: any) => total + (item.price * item.quantity || 0), 0) || 0;
+    const validItems = getValidItems();
+    return validItems.reduce((total: number, item: any) => total + (item.price * item.quantity || 0), 0);
   };
 
   const getCurrentStatusInfo = () => {
@@ -269,7 +342,7 @@ const processImagePath = (imagePath: string | null | undefined): any => {
     const statusMap: { [key: string]: { text: string; color: string } } = {
       'ORDER_CONFIRMED': { text: 'Order Confirmed', color: COLORS.success },
       'ORDER_PROCESSED': { text: 'Processing', color: COLORS.primary },
-      'ORDER_PACKED': { text: 'Packed', color: COLORS.primary },
+      'PACKED': { text: 'Packed', color: COLORS.primary },
       'READY_TO_SHIP': { text: 'Ready to Ship', color: COLORS.primary },
       'SHIPPED': { text: 'Shipped', color: COLORS.primary },
       'OUT_FOR_DELIVERY': { text: 'Out for Delivery', color: COLORS.primary },
@@ -331,7 +404,8 @@ const processImagePath = (imagePath: string | null | undefined): any => {
 
   const currentStatusInfo = getCurrentStatusInfo();
   const timeline = createTimeline();
-  const displayedProducts = showAllProducts ? orderData.items : orderData.items.slice(0, 2);
+  const validItems = getValidItems();
+  const displayedProducts = showAllProducts ? validItems : validItems.slice(0, 2);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -359,25 +433,42 @@ const processImagePath = (imagePath: string | null | undefined): any => {
               </View>
             </View>
             
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.text }]}>Items</Text>
-              <Text style={[styles.summaryValue, { color: colors.title }]}>{getTotalItems()} items</Text>
-            </View>
-            
-            <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { color: colors.text }]}>Total</Text>
-              <Text style={[styles.summaryValue, { color: COLORS.success }]}>₹{getTotalPrice().toLocaleString('en-IN')}</Text>
-            </View>
+            {validItems.length > 0 && (
+              <>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.text }]}>Items</Text>
+                  <Text style={[styles.summaryValue, { color: colors.title }]}>{getTotalItems()} items</Text>
+                </View>
+                
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.text }]}>Total</Text>
+                  <Text style={[styles.summaryValue, { color: COLORS.success }]}>₹{getTotalPrice().toLocaleString('en-IN')}</Text>
+                </View>
+              </>
+            )}
           </View>
 
-          {/* Cancel Order Button */}
+          {/* Cancel Order Button - Only show when canCancel is true */}
           {orderData.canCancel && (
             <TouchableOpacity 
-              style={[styles.cancelButton, { backgroundColor: COLORS.danger }]}
-              onPress={() => showAlert('Cancel Order', 'Are you sure you want to cancel this order?')}
+              style={[
+                styles.cancelButton, 
+                { 
+                  backgroundColor: cancelling ? COLORS.gray : COLORS.danger,
+                  opacity: cancelling ? 0.7 : 1
+                }
+              ]}
+              onPress={handleCancelOrder}
+              disabled={cancelling}
             >
-              <Icon name="cancel" size={20} color={COLORS.white} />
-              <Text style={[styles.cancelButtonText, { color: COLORS.white }]}>Cancel Order</Text>
+              {cancelling ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <Icon name="cancel" size={20} color={COLORS.white} />
+              )}
+              <Text style={[styles.cancelButtonText, { color: COLORS.white }]}>
+                {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -443,38 +534,49 @@ const processImagePath = (imagePath: string | null | undefined): any => {
             </TouchableOpacity>
           )}
 
-          {/* Order Items */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.title }]}>Order Items</Text>
-              {orderData.items && orderData.items.length > 2 && (
-                <TouchableOpacity onPress={() => setShowAllProducts(!showAllProducts)}>
-                  <Text style={[styles.toggleText, { color: COLORS.primary }]}>
-                    {showAllProducts ? 'Show Less' : `+${orderData.items.length - 2} more`}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+          {/* Order Items - Only show if there are valid items */}
+          {validItems.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.title }]}>Order Items</Text>
+                {validItems.length > 2 && (
+                  <TouchableOpacity onPress={() => setShowAllProducts(!showAllProducts)}>
+                    <Text style={[styles.toggleText, { color: COLORS.primary }]}>
+                      {showAllProducts ? 'Show Less' : `+${validItems.length - 2} more`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            {displayedProducts.map((item: OrderItem, index: number) => {
-              // Use the processImagePath function to get the correct image source
-              const imageSource = processImagePath(item.image_path);
-              
-              return (
-                <View key={`${item.id}-${index}`} style={{ marginBottom: 15 }}>
-                  <CardStyle3
-                    id={item.id.toString()}
-                    title={item.productName}
-                    price={`₹${item.price.toLocaleString('en-IN')} × ${item.quantity}`}
-                    image={imageSource}
-                    removebtn={true}
-                    status={orderData.current_status}
-                    grid={true}
-                  />
-                </View>
-              );
-            })}
-          </View>
+              {displayedProducts.map((item: OrderItem, index: number) => {
+                const imageSource = processImagePath(item.image_path);
+                
+                return (
+                  <View key={`${item.id}-${index}`} style={{ marginBottom: 15 }}>
+                    <CardStyle3
+                      id={item.id.toString()}
+                      title={item.productName}
+                      price={`₹${item.price.toLocaleString('en-IN')} × ${item.quantity}`}
+                      image={imageSource}
+                      removebtn={true}
+                      status={orderData.current_status}
+                      grid={true}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Show message when no valid items */}
+          {validItems.length === 0 && (
+            <View style={[styles.noItemsContainer, { backgroundColor: colors.card }]}>
+              <Icon name="inbox" size={48} color={colors.text} style={{ opacity: 0.5, marginBottom: 10 }} />
+              <Text style={[styles.noItemsText, { color: colors.text }]}>
+                No items information available for this order
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -631,6 +733,19 @@ const styles = StyleSheet.create({
   retryButtonText: {
     ...FONTS.fontSemiBold,
     fontSize: 16,
+  },
+  noItemsContainer: {
+    padding: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  noItemsText: {
+    ...FONTS.fontRegular,
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
   },
 });
 

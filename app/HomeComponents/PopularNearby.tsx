@@ -49,7 +49,7 @@ const PopularNearbySection = () => {
 
   return (
     <>
-      <View style={{ backgroundColor: colors.background, width: '100%' }}>
+      <View style={{ backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background, width: '100%' }}>
         <View
           style={[
             GlobalStyleSheet.container,
@@ -57,11 +57,11 @@ const PopularNearbySection = () => {
           ]}
         >
           <View style={styles.headerRow}>
-            <Text style={[FONTS.Marcellus, styles.headerTitle, { color: colors.title }]}>
+            <Text style={[FONTS.Marcellus, styles.headerTitle, { color: theme.dark ? COLORS.darkTitle : COLORS.title }]}>
               Popular Nearby
             </Text>
           </View>
-          <Text style={[FONTS.fontRegular, styles.subTitle, { color: colors.textLight }]}>
+          <Text style={[FONTS.fontRegular, styles.subTitle, { color: theme.dark ? COLORS.darkTextLight : COLORS.textLight }]}>
             Up to 60% off + up to ₹107 Cash BACK
           </Text>
         </View>
@@ -71,7 +71,7 @@ const PopularNearbySection = () => {
         style={[
           GlobalStyleSheet.container,
           styles.listWrapper,
-          { backgroundColor: colors.background },
+          { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background },
         ]}
       >
         <FlatList
@@ -99,7 +99,7 @@ const PopularNearbySection = () => {
                   style={[
                     styles.cardContainer,
                     {
-                      backgroundColor: Platform.OS === 'ios' ? colors.card : undefined,
+                      backgroundColor: Platform.OS === 'ios' ? (theme.dark ? COLORS.darkCard : COLORS.card) : undefined,
                     },
                   ]}
                 >
@@ -126,27 +126,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 20,
+    ...FONTS.h4, // Using h4 for consistent typography
+    fontSize: SIZES.h4,
+    color: COLORS.title,
   },
   subTitle: {
-    fontSize: 13,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontSm,
     marginTop: 2,
+    color: COLORS.textLight,
   },
   listWrapper: {
     paddingVertical: 0,
     marginBottom: SIZES.margin,
+    backgroundColor: COLORS.background,
   },
   cardTouchable: {
     marginRight: SIZES.margin / 2,
   },
   cardContainer: {
-    shadowColor: COLORS.primaryLight,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 5,
+    shadowRadius: SIZES.radius,
     borderRadius: SIZES.radius_lg,
     width: 400,
     alignItems: 'center',
+    backgroundColor: COLORS.card, // Default for non-iOS platforms
   },
   bannerImage: {
     width: '100%',

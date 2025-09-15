@@ -8,48 +8,33 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useTheme } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
 import { getBanners } from "../Services/BannerService";
-import appTheme from "../constants/theme";
+import { COLORS, FONTS, SIZES } from "../constants/theme";
 
-const { COLORS, FONTS, SIZES } = appTheme;
 const { width } = Dimensions.get("window");
-const IMAGE_BASE_URL = "https://app.bmgjewellers.com"; // root domain for images
+const IMAGE_BASE_URL = "https://app.bmgjewellers.com";
 
 export default function BannerSlider() {
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation<any>();
+  const { colors, dark } = useTheme();
 
   useEffect(() => {
     (async () => {
       try {
         const data = await getBanners();
-        setBanners(data);
+        setBanners(data || []);
       } catch (error) {
         console.error("Failed to load banners:", error);
+        setBanners([]);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  if (!loading && banners.length === 0) {
-    return (
-      <View style={styles.placeholderContainer}>
-        <Text style={styles.placeholderText}>No banners available</Text>
-      </View>
-    );
-  }
 
   const handlePress = (item: any) => {
     if (item.itemname && item.gender) {
@@ -60,8 +45,34 @@ export default function BannerSlider() {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={[styles.loadingText, { color: dark ? COLORS.darkText : COLORS.text }]}>
+          Loading banners...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!loading && banners.length === 0) {
+    return (
+      <View
+        style={[
+          styles.placeholderContainer,
+          { backgroundColor: dark ? COLORS.darkCard : COLORS.card, borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor },
+        ]}
+      >
+        <Text style={[styles.placeholderText, { color: dark ? COLORS.darkText : COLORS.text }]}>
+          No banners available
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
       <Carousel
         width={width}
         height={width * 0.5}
@@ -86,7 +97,7 @@ export default function BannerSlider() {
               resizeMode="cover"
             />
             <View style={styles.titleContainer}>
-              <Text style={styles.titleText} numberOfLines={2}>
+              <Text style={[styles.titleText, { color: COLORS.title }]} numberOfLines={2}>
                 {item.title || "BMG Jewellers"}
               </Text>
             </View>
@@ -100,56 +111,68 @@ export default function BannerSlider() {
 const styles = StyleSheet.create({
   container: {
     marginVertical: SIZES.margin,
-    shadowColor: COLORS.black,
+    backgroundColor: COLORS.background,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: SIZES.radius,
     elevation: 5,
   },
   loadingContainer: {
     height: width * 0.5,
     justifyContent: "center",
     alignItems: "center",
+    marginHorizontal: SIZES.padding,
+    borderRadius: SIZES.radius_lg,
+    backgroundColor: COLORS.card,
+  },
+  loadingText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    marginTop: SIZES.margin / 2,
+    color: COLORS.text,
   },
   placeholderContainer: {
     height: width * 0.5,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.light,
-    borderRadius: SIZES.radius,
-    marginHorizontal: SIZES.margin,
+    borderRadius: SIZES.radius_lg,
+    marginHorizontal: SIZES.padding,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: COLORS.borderColor,
+    backgroundColor: COLORS.card,
   },
   placeholderText: {
-    ...FONTS.font,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
     color: COLORS.textLight,
   },
   slideContainer: {
     position: "relative",
-    borderRadius: SIZES.radius,
+    borderRadius: SIZES.radius_lg,
     overflow: "hidden",
-    marginHorizontal: SIZES.margin / 2,
+    marginHorizontal: SIZES.padding / 2,
   },
   bannerImage: {
     width: "100%",
     height: "100%",
-    borderRadius: SIZES.radius,
+    borderRadius: SIZES.radius_lg,
   },
   titleContainer: {
     position: "absolute",
     left: SIZES.padding,
-    bottom: 80,
+    bottom: 60,
     right: SIZES.padding,
     padding: SIZES.padding / 2,
     borderRadius: SIZES.radius,
+    // backgroundColor: COLORS.overlay,
     maxWidth: "60%",
   },
   titleText: {
-    ...FONTS.Marcellus,
-    color: COLORS.primary,
-    fontSize: 22,
-    lineHeight: 26,
-    textShadowColor: COLORS.black,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    ...FONTS.body,
+    fontSize: SIZES.h1,
+    lineHeight: SIZES.h3 + 10,
+    color: COLORS.title,
   },
 });

@@ -199,9 +199,9 @@ const HighlyRecommendedSection = ({
   // Render loading state
   if (loading && !refreshing) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={[styles.loadingText, { color: colors.text }]}>
+        <Text style={[styles.loadingText, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>
           Loading products...
         </Text>
       </View>
@@ -211,16 +211,16 @@ const HighlyRecommendedSection = ({
   // Render error state
   if (error && products.length === 0) {
     return (
-      <View style={styles.errorContainer}>
-        <Feather name="alert-circle" size={40} color={COLORS.danger} />
-        <Text style={[styles.errorText, { color: colors.title }]}>
+      <View style={[styles.errorContainer, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
+        <Feather name="alert-circle" size={SIZES.h2} color={COLORS.danger} />
+        <Text style={[styles.errorText, { color: theme.dark ? COLORS.darkTitle : COLORS.title }]}>
           {error}
         </Text>
         <TouchableOpacity 
-          style={[styles.refreshButton, { borderColor: colors.border }]}
+          style={[styles.refreshButton, { borderColor: theme.dark ? COLORS.darkBorderColor : COLORS.borderColor }]}
           onPress={handleRefresh}
         >
-          <Feather name="refresh-cw" size={20} color={COLORS.primary} />
+          <Feather name="refresh-cw" size={SIZES.fontLg} color={COLORS.primary} />
           <Text style={[styles.refreshText, { color: COLORS.primary }]}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -230,19 +230,19 @@ const HighlyRecommendedSection = ({
   // Render empty state
   if (!loading && products.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Feather name="package" size={40} color={colors.text} />
-        <Text style={[styles.emptyTitle, { color: colors.title }]}>
+      <View style={[styles.emptyContainer, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
+        <Feather name="package" size={SIZES.h2} color={theme.dark ? COLORS.darkText : COLORS.text} />
+        <Text style={[styles.emptyTitle, { color: theme.dark ? COLORS.darkTitle : COLORS.title }]}>
           No products found
         </Text>
-        <Text style={[styles.emptyText, { color: colors.text }]}>
+        <Text style={[styles.emptyText, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>
           Check back later for new arrivals
         </Text>
         <TouchableOpacity 
-          style={[styles.refreshButton, { borderColor: colors.border }]}
+          style={[styles.refreshButton, { borderColor: theme.dark ? COLORS.darkBorderColor : COLORS.borderColor }]}
           onPress={handleRefresh}
         >
-          <Feather name="refresh-cw" size={20} color={COLORS.primary} />
+          <Feather name="refresh-cw" size={SIZES.fontLg} color={COLORS.primary} />
           <Text style={[styles.refreshText, { color: COLORS.primary }]}>Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -250,9 +250,9 @@ const HighlyRecommendedSection = ({
   }
 
   return (
-    <View style={[GlobalStyleSheet.container, styles.container]}>
+    <View style={[GlobalStyleSheet.container, styles.container, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.title }]}>
+        <Text style={[styles.title, { color: theme.dark ? COLORS.darkTitle : COLORS.title }]}>
           {title}
         </Text>
       </View>
@@ -312,70 +312,86 @@ const HighlyRecommendedSection = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 25,
+    paddingTop: SIZES.padding + 5,
     position: 'relative',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
-    padding: 20,
+    padding: SIZES.padding,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 200,
+    backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 10,
-    ...FONTS.fontRegular
+    marginTop: SIZES.margin / 2,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    color: COLORS.text,
   },
   errorContainer: {
-    padding: 20,
+    padding: SIZES.padding,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 200,
+    backgroundColor: COLORS.background,
   },
   errorText: {
-    marginTop: 15,
+    marginTop: SIZES.margin / 2,
     ...FONTS.h5,
-    textAlign: 'center'
+    fontSize: SIZES.h5,
+    textAlign: 'center',
+    color: COLORS.title,
   },
   emptyContainer: {
-    padding: 20,
+    padding: SIZES.padding,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 200,
+    backgroundColor: COLORS.background,
   },
   emptyTitle: {
-    marginTop: 15,
-    ...FONTS.h5
+    marginTop: SIZES.margin / 2,
+    ...FONTS.h5,
+    fontSize: SIZES.h5,
+    color: COLORS.title,
   },
   emptyText: {
     marginTop: 5,
     ...FONTS.fontRegular,
-    textAlign: 'center'
+    fontSize: SIZES.font,
+    textAlign: 'center',
+    color: COLORS.text,
   },
   refreshButton: {
-    marginTop: 15,
-    padding: 10,
+    marginTop: SIZES.margin,
+    padding: SIZES.padding - 4,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 15,
+    borderRadius: SIZES.radius_lg,
+    paddingHorizontal: SIZES.padding + 4,
+    borderColor: COLORS.borderColor,
   },
   refreshText: {
     marginLeft: 5,
-    ...FONTS.fontRegular
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    color: COLORS.primary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15,
-    paddingHorizontal: 15,
+    marginBottom: SIZES.margin,
+    paddingHorizontal: SIZES.padding,
   },
   title: {
-    ...FONTS.Marcellus,
-    fontSize: 24,
-    lineHeight: 30,
+    ...FONTS.h3,
+    fontSize: SIZES.h4,
+    lineHeight: SIZES.h3 + 6,
     flex: 1,
+    color: COLORS.title,
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -383,16 +399,17 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     ...FONTS.fontRegular,
-    fontSize: 13,
+    fontSize: SIZES.fontSm,
     marginRight: 2,
+    color: COLORS.primary,
   },
   productsContainer: {
-    paddingHorizontal: 15,
-    paddingBottom: 20,
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: SIZES.padding,
   },
   productWrapper: {
     width: SIZES.width / 2.3,
-    marginRight: 15,
+    marginRight: SIZES.margin,
   },
   decorativeBorder: {
     position: 'absolute',

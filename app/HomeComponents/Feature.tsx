@@ -1,4 +1,3 @@
-// components/FeaturedNowSection.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -24,14 +23,18 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
   const { colors, dark } = useTheme();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadProducts = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const data = await fetchFeaturedProducts();
-        setProducts(data);
+        setProducts(data || []);
       } catch (error) {
         console.error("Failed to fetch featured products:", error);
+        setError("Failed to load featured products. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -40,15 +43,15 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
   }, []);
 
   return (
-    <View style={[styles.sectionWrapper, { backgroundColor: colors.background }]}>
+    <View style={[styles.sectionWrapper, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
       {/* Header */}
       <View style={[GlobalStyleSheet.container, styles.headerContainer]}>
         <View style={styles.headerRow}>
-          <Text style={[styles.sectionTitle, { color: colors.title }]}>
+          <Text style={[styles.sectionTitle, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
             Featured Now
           </Text>
-          <TouchableOpacity>
-            <Text style={[styles.seeAllText, { color: colors.title }]}>
+          <TouchableOpacity onPress={() => navigation.navigate("FeaturedProducts")}>
+            <Text style={[styles.seeAllText, { color: dark ? COLORS.darkText : COLORS.text }]}>
               See All
             </Text>
           </TouchableOpacity>
@@ -57,7 +60,33 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
         {/* Product Scroll */}
         <View style={styles.scrollWrapper}>
           {loading ? (
-            <ActivityIndicator size="small" color={COLORS.primary} style={styles.loader} />
+            <View style={[styles.loaderContainer, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={[styles.loadingText, { color: dark ? COLORS.darkText : COLORS.text }]}>
+                Loading featured products...
+              </Text>
+            </View>
+          ) : error ? (
+            <View style={[styles.errorContainer, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
+              <Text style={[styles.errorText, { color: COLORS.danger }]}>{error}</Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { backgroundColor: COLORS.primary }]}
+                onPress={() => {
+                  setLoading(true);
+                  setError(null);
+                  fetchFeaturedProducts().then(setProducts).catch(() => setError("Failed to load featured products."));
+                  setLoading(false);
+                }}
+              >
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : products.length === 0 ? (
+            <View style={[styles.emptyContainer, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
+              <Text style={[styles.emptyText, { color: dark ? COLORS.darkText : COLORS.text }]}>
+                No featured products available
+              </Text>
+            </View>
           ) : (
             <ScrollView
               horizontal
@@ -70,55 +99,66 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
                     key={index}
                     style={[
                       styles.productCardWrapper,
-                      Platform.OS === "ios" && { backgroundColor: colors.card, borderRadius: 100 },
+                      Platform.OS === "ios" && { backgroundColor: dark ? COLORS.darkCard : COLORS.card, borderRadius: 100 },
                     ]}
                   >
                     <TouchableOpacity
                       onPress={() =>
                         navigation.navigate("ProductDetails", { sno: product.SNO })
                       }
-                      style={[styles.productCard, { backgroundColor: colors.card }]}
+                      style={[styles.productCard, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
                     >
                       {/* Product Image */}
-                      <Image
-                        style={[
-                          styles.productImage,
-                          { backgroundColor: colors.background },
-                        ]}
-                        source={product.mainImage}
-                      />
+                   <Image
+  style={[
+    styles.productImage,
+    {
+      backgroundColor: dark ? COLORS.darkBackground : COLORS.background,
+      borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor,
+    },
+  ]}
+  source={
+    typeof product.mainImage === "string" && product.mainImage.trim() !== ""
+      ? { uri: product.mainImage }
+      : IMAGES.item11
+  }
+  resizeMode="cover"
+/>
+
 
                       {/* Product Info */}
                       <View>
-                        <Text style={[styles.productName, { color: colors.title }]}>
+                        <Text style={[styles.productName, { color: dark ? COLORS.darkTitle : COLORS.title }]} numberOfLines={1}>
                           {product.SUBITEMNAME || "Product"}
                         </Text>
                         <View style={styles.priceRow}>
-                          <Text style={[styles.price, { color: colors.title }]}>
-                            ₹{product.GrandTotal}
+                          <Text style={[styles.price, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
+                            ₹{parseFloat(product.GrandTotal || '0').toFixed(2)}
                           </Text>
                           {product.MRP && (
                             <Text
                               style={[
                                 styles.mrp,
-                                { color: dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)" },
+                                { color: dark ? COLORS.darkTextLight : COLORS.textLight },
                               ]}
                             >
-                              ₹{product.MRP}
+                              ₹{parseFloat(product.MRP).toFixed(2)}
                             </Text>
                           )}
                           <Image style={styles.ratingIcon} source={IMAGES.star4} />
                           <Text
                             style={[
                               styles.reviewText,
-                              { color: dark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" },
+                              { color: dark ? COLORS.darkTextLight : COLORS.textLight },
                             ]}
                           >
                             (2k Review)
                           </Text>
                         </View>
                         {product.offer && (
-                          <Text style={styles.offerText}>{product.offer}</Text>
+                          <Text style={[styles.offerText, { color: COLORS.danger }]}>
+                            {product.offer}
+                          </Text>
                         )}
                       </View>
                     </TouchableOpacity>
@@ -136,6 +176,7 @@ const FeaturedNowSection = ({ navigation }: FeaturedNowSectionProps) => {
 const styles = StyleSheet.create({
   sectionWrapper: {
     width: "100%",
+    backgroundColor: COLORS.background,
   },
   headerContainer: {
     paddingTop: 0,
@@ -145,35 +186,89 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: SIZES.padding,
   },
   sectionTitle: {
-    ...FONTS.Marcellus,
-    fontSize: SIZES.h5,
+    ...FONTS.h3,
+    fontSize: SIZES.h4,
+    color: COLORS.title,
   },
   seeAllText: {
     ...FONTS.fontRegular,
     fontSize: SIZES.fontSm,
+    color: COLORS.text,
   },
   scrollWrapper: {
-    marginHorizontal: -SIZES.margin,
+    marginHorizontal: -SIZES.padding,
   },
-  loader: {
+  loaderContainer: {
     padding: SIZES.padding,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius_lg,
+  },
+  loadingText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    marginTop: SIZES.margin / 2,
+    color: COLORS.text,
+  },
+  errorContainer: {
+    padding: SIZES.padding,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius_lg,
+    marginHorizontal: SIZES.padding,
+  },
+  errorText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    color: COLORS.danger,
+    marginBottom: SIZES.margin,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding * 2,
+    paddingVertical: SIZES.padding,
+    borderRadius: SIZES.radius_lg,
+  },
+  retryText: {
+    color: COLORS.white,
+    fontWeight: "bold",
+    ...FONTS.fontMedium,
+    fontSize: SIZES.font,
+  },
+  emptyContainer: {
+    padding: SIZES.padding,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius_lg,
+    marginHorizontal: SIZES.padding,
+  },
+  emptyText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
+    color: COLORS.text,
+    textAlign: "center",
   },
   scrollContent: {
-    paddingHorizontal: SIZES.margin,
+    paddingHorizontal: SIZES.padding,
     paddingBottom: SIZES.padding * 1.2,
   },
   productRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SIZES.margin,
   },
   productCardWrapper: {
-    shadowColor: "rgba(195,123,95,0.25)",
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: -10, height: 20 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowRadius: SIZES.radius,
   },
   productCard: {
     flexDirection: "row",
@@ -183,15 +278,20 @@ const styles = StyleSheet.create({
     padding: SIZES.padding / 1.5,
     paddingRight: SIZES.padding * 1.2,
     borderRadius: SIZES.radius_lg,
+    backgroundColor: COLORS.card,
   },
   productImage: {
     width: 75,
     height: 75,
     borderRadius: SIZES.radius_md,
+    borderWidth: 1,
+    borderColor: COLORS.borderColor,
+    backgroundColor: COLORS.background,
   },
   productName: {
-    ...FONTS.Marcellus,
-    fontSize: SIZES.fontLg,
+    ...FONTS.fontMedium,
+    fontSize: SIZES.font,
+    color: COLORS.title,
   },
   priceRow: {
     flexDirection: "row",
@@ -202,12 +302,14 @@ const styles = StyleSheet.create({
   price: {
     ...FONTS.fontSemiBold,
     fontSize: SIZES.fontLg,
+    color: COLORS.title,
   },
   mrp: {
     ...FONTS.fontRegular,
     fontSize: SIZES.fontSm,
     textDecorationLine: "line-through",
     marginRight: 5,
+    color: COLORS.textLight,
   },
   ratingIcon: {
     height: 12,
@@ -217,6 +319,7 @@ const styles = StyleSheet.create({
   reviewText: {
     ...FONTS.fontRegular,
     fontSize: SIZES.fontSm,
+    color: COLORS.textLight,
   },
   offerText: {
     ...FONTS.fontMedium,

@@ -10,10 +10,13 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useTheme } from '@react-navigation/native';
+import { COLORS, FONTS, SIZES } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
 
 const RingsPage = ({ navigation }) => {
+  const { colors, dark } = useTheme();
   // Animation values
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(50)).current;
@@ -60,7 +63,7 @@ const RingsPage = ({ navigation }) => {
     },
   ];
 
-  const handleImagePress = (itemName, subItemName) => {
+  const handleImagePress = (itemName: string, subItemName: string) => {
     // Navigate to Products page with parameters
     navigation.navigate('Products', {
       itemName,
@@ -69,17 +72,18 @@ const RingsPage = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
       {/* Animated Header */}
       <Animated.View style={[styles.headerContainer, { opacity: fadeAnim }]}>
-        <Text style={styles.header}>Explore Our Rings</Text>
+        <Text style={[styles.header, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
+          Explore Our Rings
+        </Text>
       </Animated.View>
       
       {/* Content - Images */}
       <ScrollView 
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        // Remove extra bottom inset
         contentInsetAdjustmentBehavior="automatic"
       >
         {/* First row with two images */}
@@ -91,7 +95,7 @@ const RingsPage = ({ navigation }) => {
             ]}
           >
             <TouchableOpacity
-              style={[styles.imageContainer, styles.halfWidth]}
+              style={[styles.imageContainer, styles.halfWidth, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
               onPress={() => handleImagePress(ringImages[0].itemName, ringImages[0].subItemName)}
               activeOpacity={0.9}
             >
@@ -100,23 +104,22 @@ const RingsPage = ({ navigation }) => {
                 style={styles.image}
                 resizeMode="cover"
               />
-              <View style={styles.imageOverlay}>
-                <Text style={styles.imageText}>{ringImages[0].subItemName}</Text>
+              <View style={[styles.imageOverlay, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]}>
+                <Text style={[styles.imageText, { color: COLORS.white }]}>
+                  {ringImages[0].subItemName}
+                </Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
           
           <Animated.View 
             style={[
-              { 
-                opacity: fadeAnim, 
-                transform: [{ translateY: slideAnim }],
-              },
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
               styles.animationWrapper
             ]}
           >
             <TouchableOpacity
-              style={[styles.imageContainer, styles.halfWidth, styles.secondImage]}
+              style={[styles.imageContainer, styles.halfWidth, styles.secondImage, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
               onPress={() => handleImagePress(ringImages[1].itemName, ringImages[1].subItemName)}
               activeOpacity={0.9}
             >
@@ -125,8 +128,10 @@ const RingsPage = ({ navigation }) => {
                 style={styles.image}
                 resizeMode="cover"
               />
-              <View style={styles.imageOverlay}>
-                <Text style={styles.imageText}>{ringImages[1].subItemName}</Text>
+              <View style={[styles.imageOverlay, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]}>
+                <Text style={[styles.imageText, { color: COLORS.white }]}>
+                  {ringImages[1].subItemName}
+                </Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -136,15 +141,12 @@ const RingsPage = ({ navigation }) => {
         <View style={styles.row}>
           <Animated.View 
             style={[
-              { 
-                opacity: fadeAnim, 
-                transform: [{ translateY: slideAnim }] 
-              },
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
               styles.animationWrapper
             ]}
           >
             <TouchableOpacity
-              style={[styles.imageContainer, styles.fullWidth]}
+              style={[styles.imageContainer, styles.fullWidth, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
               onPress={() => handleImagePress(ringImages[2].itemName, ringImages[2].subItemName)}
               activeOpacity={0.9}
             >
@@ -153,8 +155,10 @@ const RingsPage = ({ navigation }) => {
                 style={styles.image}
                 resizeMode="cover"
               />
-              <View style={styles.imageOverlay}>
-                <Text style={styles.imageText}>{ringImages[2].subItemName}</Text>
+              <View style={[styles.imageOverlay, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]}>
+                <Text style={[styles.imageText, { color: COLORS.white }]}>
+                  {ringImages[2].subItemName}
+                </Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -167,51 +171,51 @@ const RingsPage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
-    marginBottom: 6,
+    backgroundColor: COLORS.background,
+    marginBottom: SIZES.margin / 2,
   },
   headerContainer: {
-    padding: 16,
+    padding: SIZES.padding,
     alignItems: 'center',
-    paddingTop: 20, // Added top padding for better spacing
+    paddingTop: SIZES.padding * 1.5,
   },
   header: {
-    fontSize: 22,
-    color: '#000000',
-    fontWeight: '600',
+    fontSize: SIZES.h4,
+    color: COLORS.title,
+    // fontWeight: '600',
     letterSpacing: 1,
+    ...FONTS.h3,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    // Removed extra padding that was causing bottom space
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: SIZES.padding,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: SIZES.margin,
   },
   animationWrapper: {
     flex: 1,
   },
   imageContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius_lg,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowRadius: SIZES.radius,
     elevation: 4,
     overflow: 'hidden',
   },
   halfWidth: {
-    width: (width - 40) / 2, // 16px padding * 2 + 8px margin = 40px
+    width: (width - SIZES.padding * 2 - SIZES.margin) / 2,
   },
   secondImage: {
-    marginLeft: 8,
+    marginLeft: SIZES.margin,
   },
   fullWidth: {
-    width: width - 32, // 16px padding * 2 = 32px
+    width: width - SIZES.padding * 2,
   },
   image: {
     width: '100%',
@@ -222,16 +226,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    padding: 12,
+    backgroundColor: COLORS.overlay,
+    padding: SIZES.padding,
     alignItems: 'center',
   },
   imageText: {
-    color: '#000000',
-    fontSize: 16,
+    color: COLORS.white,
+    fontSize: SIZES.font,
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: 0.5,
+    ...FONTS.fontBold,
   },
 });
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
-import { FONTS, COLORS } from '../../constants/theme';
+import { FONTS, COLORS, SIZES } from '../../constants/theme';
 import { useTheme } from '@react-navigation/native';
 import LikeBtn from '../LikeBtn';
 import { useDispatch, useSelector } from 'react-redux';
 import { removeFromwishList } from '../../redux/reducer/wishListReducer';
 
-import fallbackImage from '../../assets/images/item/pic44.png'; // <-- your fallback image
+import fallbackImage from '../../assets/images/item/pic44.png';
 
 type Props = {
   id: string;
@@ -49,7 +49,6 @@ const Cardstyle2 = ({
   const inWishlist = () => wishList.map((data: any) => data.id);
   const removeItemFromWishList = () => dispatch(removeFromwishList(id));
 
-  // Validate image URL or fallback
   const imageSource = imageError
     ? fallbackImage
     : typeof image === 'string' && image
@@ -62,26 +61,41 @@ const Cardstyle2 = ({
     <View
       style={[
         {
-          shadowColor: 'rgba(195, 123, 95, 0.25)',
+          shadowColor: COLORS.shadow,
           shadowOffset: { width: 5, height: 20 },
           shadowOpacity: 0.1,
           shadowRadius: 5,
-          marginTop: marginTop ? 15 : 0,
+          marginTop: marginTop ? SIZES.margin : 0,
         },
         Platform.OS === 'ios' && {
-          backgroundColor: colors.card,
-          borderRadius: 20,
+          backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius,
         },
       ]}
     >
       <TouchableOpacity
         activeOpacity={0.9}
-        style={{ backgroundColor: colors.card, borderRadius: 20 }}
+        style={{
+          backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius,
+        }}
         onPress={onPress}
       >
         {/* Title */}
-        <View style={{ paddingHorizontal: 15, paddingTop: 15, paddingRight: 0 }}>
-          <Text style={{ ...FONTS.Marcellus, fontSize: 16, color: colors.title }}>
+        <View
+          style={{
+            paddingHorizontal: SIZES.padding,
+            paddingTop: SIZES.padding,
+            paddingRight: 0,
+          }}
+        >
+          <Text
+            style={{
+              ...FONTS.marcellus,
+              fontSize: SIZES.h6,
+              color: theme.dark ? COLORS.darkTitle : COLORS.title,
+            }}
+          >
             {title ?? 'Untitled'}
           </Text>
         </View>
@@ -95,23 +109,47 @@ const Cardstyle2 = ({
         />
 
         {/* Pricing */}
-        <View style={{ padding: 15, paddingTop: 0, alignItems: mindiscount ? 'center' : undefined }}>
+        <View
+          style={{
+            padding: SIZES.padding,
+            paddingTop: 0,
+            alignItems: mindiscount ? 'center' : undefined,
+          }}
+        >
           {mindiscount ? (
-            <Text style={{ ...FONTS.fontSemiBold, fontSize: 15, color: COLORS.success }}>
+            <Text
+              style={{
+                ...FONTS.fontSemiBold,
+                fontSize: SIZES.font,
+                color: COLORS.success,
+              }}
+            >
               {discount}
             </Text>
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={{ ...FONTS.fontSemiBold, fontSize: 14, color: colors.title }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <Text
+                style={{
+                  ...FONTS.fontSemiBold,
+                  fontSize: SIZES.font,
+                  color: theme.dark ? COLORS.darkTitle : COLORS.title,
+                }}
+              >
                 ₹{price}
               </Text>
               {discount && (
                 <Text
                   style={{
                     ...FONTS.fontRegular,
-                    fontSize: 12,
+                    fontSize: SIZES.fontXs,
                     textDecorationLine: 'line-through',
-                    color: theme.dark ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,0.7)',
+                    color: theme.dark ? COLORS.darkPlaceholder : COLORS.placeholder,
                     marginRight: 5,
                   }}
                 >
@@ -123,7 +161,7 @@ const Cardstyle2 = ({
                   numberOfLines={1}
                   style={{
                     ...FONTS.fontMedium,
-                    fontSize: 13,
+                    fontSize: SIZES.fontSm,
                     color: COLORS.success,
                     paddingRight: 40,
                   }}
@@ -137,7 +175,13 @@ const Cardstyle2 = ({
 
         {/* Like Button */}
         {likebtn && (
-          <View style={{ position: 'absolute', right: 5, top: 5 }}>
+          <View
+            style={{
+              position: 'absolute',
+              right: 5,
+              top: 5,
+            }}
+          >
             <TouchableOpacity
               style={{
                 height: 38,

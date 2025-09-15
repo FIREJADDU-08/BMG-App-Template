@@ -30,7 +30,7 @@ const CARD_WIDTH =
 
 const API_IMAGE_URL = 'https://app.bmgjewellers.com';
 
-// ✅ Utility to extract product images
+// Utility to extract product images
 const getProductImages = (item: any): string[] => {
   try {
     const imageData = item?.ImagePath;
@@ -90,11 +90,11 @@ const getProductImages = (item: any): string[] => {
 
 const RecentlyShortlistedSection: React.FC<Props> = ({
   navigation,
-  title = 'Recently Shortlisted By You',
+  title = 'Recently Shortlisted',
   showSeeAll = true,
 }) => {
   const theme = useTheme();
-  const { colors } = theme;
+  const { colors, dark } = theme;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,7 +116,7 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
     [failedImages],
   );
 
-  // ✅ Process products with getProductImages
+  // Process products with getProductImages
   const processProducts = useCallback((rawProducts: any[]): Product[] => {
     if (!Array.isArray(rawProducts)) return [];
 
@@ -129,8 +129,8 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
         title: String(product.SUBITEMNAME || product.ITEMNAME || product.title || 'Product'),
         price: Number(product.GrandTotal || product.RATE || product.price || 0),
         discount: Number(product.discount || 0),
-        image: firstImage, // ✅ first image for display
-        rawData: { ...product, allImages: images }, // ✅ keep all images if needed
+        image: firstImage,
+        rawData: { ...product, allImages: images },
       };
     });
   }, []);
@@ -205,9 +205,9 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
         <ActivityIndicator size="small" color={COLORS.primary} />
-        <Text style={[styles.loadingText, { color: colors.text }]}>
+        <Text style={[styles.loadingText, { color: dark ? COLORS.darkText : COLORS.text }]}>
           Loading recently viewed...
         </Text>
       </View>
@@ -216,9 +216,14 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
-        <TouchableOpacity onPress={handleRefresh} style={styles.retryButton}>
+      <View style={[styles.errorContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+        <Text style={[styles.errorText, { color: dark ? COLORS.darkText : COLORS.text }]}>
+          {error}
+        </Text>
+        <TouchableOpacity 
+          onPress={handleRefresh} 
+          style={[styles.retryButton, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
+        >
           <Text style={[styles.retryText, { color: COLORS.primary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -227,11 +232,14 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
   if (!loading && products.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={[styles.emptyText, { color: colors.text }]}>
+      <View style={[styles.emptyContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+        <Text style={[styles.emptyText, { color: dark ? COLORS.darkText : COLORS.text }]}>
           No recently viewed products found.
         </Text>
-        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+        <TouchableOpacity 
+          onPress={handleRefresh} 
+          style={[styles.refreshButton, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
+        >
           <Text style={[styles.refreshText, { color: COLORS.primary }]}>Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -243,15 +251,17 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
       style={[
         GlobalStyleSheet.container,
         styles.container,
-        { backgroundColor: colors.background },
+        { backgroundColor: dark ? COLORS.darkBackground : COLORS.background },
       ]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.title }]}>{title}</Text>
-        {showSeeAll && products.length > 0 && (
+        <Text style={[styles.title, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
+          {title}
+        </Text>
+        {/* {showSeeAll && products.length > 0 && (
           <TouchableOpacity onPress={handleSeeAllPress}>
-            <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
+            <Text style={[styles.seeAllText, { color: COLORS.primary }]}>See All</Text>
           </TouchableOpacity>
-        )}
+        )} */}
       </View>
 
       <View style={styles.scrollContainer}>
@@ -269,61 +279,70 @@ const RecentlyShortlistedSection: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: SIZES.paddingSmall,
+    paddingVertical: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
-    padding: SIZES.paddingLarge,
+    padding: SIZES.padding * 2,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 120,
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     ...FONTS.fontRegular,
     fontSize: SIZES.font,
-    marginTop: SIZES.marginSmall,
+    marginTop: SIZES.margin / 2,
     textAlign: 'center',
+    color: COLORS.text,
   },
   errorContainer: {
-    padding: SIZES.paddingLarge,
+    padding: SIZES.padding * 2,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 120,
+    backgroundColor: COLORS.background,
   },
   errorText: {
     ...FONTS.fontRegular,
     fontSize: SIZES.font,
-    marginBottom: SIZES.marginSmall,
+    marginBottom: SIZES.margin / 2,
     textAlign: 'center',
+    color: COLORS.text,
   },
   retryButton: {
-    padding: SIZES.paddingSmall,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    padding: SIZES.padding - 4,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.card,
   },
   retryText: {
     ...FONTS.fontMedium,
     fontSize: SIZES.font,
+    color: COLORS.primary,
   },
   emptyContainer: {
-    padding: SIZES.paddingLarge,
+    padding: SIZES.padding * 2,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 120,
+    backgroundColor: COLORS.background,
   },
   emptyText: {
     ...FONTS.fontRegular,
     fontSize: SIZES.font,
     textAlign: 'center',
-    marginBottom: SIZES.marginSmall,
+    marginBottom: SIZES.margin / 2,
+    color: COLORS.text,
   },
   refreshButton: {
-    padding: SIZES.paddingSmall,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    padding: SIZES.padding - 4,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.card,
   },
   refreshText: {
     ...FONTS.fontMedium,
     fontSize: SIZES.font,
+    color: COLORS.primary,
   },
   header: {
     flexDirection: 'row',
@@ -333,13 +352,15 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.margin,
   },
   title: {
-    ...FONTS.Marcellus,
-    fontSize: SIZES.largeTitle,
-    lineHeight: SIZES.largeLineHeight,
+    ...FONTS.h3,
+    fontSize: SIZES.h4,
+    lineHeight: SIZES.h3 + 6,
+    color: COLORS.title,
   },
   seeAllText: {
     ...FONTS.fontRegular,
-    fontSize: SIZES.small,
+    fontSize: SIZES.fontSm,
+    color: COLORS.primary,
   },
   scrollContainer: {
     marginHorizontal: -SIZES.padding,

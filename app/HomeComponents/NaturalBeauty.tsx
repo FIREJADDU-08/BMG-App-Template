@@ -11,7 +11,7 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { useTheme } from '@react-navigation/native';
-import { COLORS, FONTS } from '../constants/theme';
+import { COLORS, FONTS, SIZES } from '../constants/theme';
 import { IMAGES } from '../constants/Images';
 import SvgcurvedText from '../components/SvgcurvedText';
 import ImageSwiper from '../components/ImageSwiper';
@@ -123,7 +123,7 @@ const NaturalBeautySection = () => {
               <View style={{ 
                 height: 300, 
                 width: 218, 
-                backgroundColor: colors.card, 
+                backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card, 
                 borderRadius: 340, 
                 justifyContent: 'center', 
                 alignItems: 'center', 
@@ -132,7 +132,7 @@ const NaturalBeautySection = () => {
                 <View style={{ 
                   height: 281, 
                   width: 198, 
-                  backgroundColor: colors.border, 
+                  backgroundColor: theme.dark ? COLORS.darkBorder : COLORS.borderColor, 
                   borderRadius: 340 
                 }} />
                 <Animated.View
@@ -142,7 +142,7 @@ const NaturalBeautySection = () => {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.2)' : COLORS.shadow,
                     transform: [{ translateX: shimmerTranslateSwiper }],
                   }}
                 />
@@ -159,7 +159,7 @@ const NaturalBeautySection = () => {
       return (
         <View style={styles.contentContainer}>
           <View style={styles.textContainer}>
-            <View style={[styles.skeletonTitle, { backgroundColor: colors.border }]}>
+            <View style={[styles.skeletonTitle, { backgroundColor: theme.dark ? COLORS.darkBorder : COLORS.borderColor }]}>
               <Animated.View
                 style={{
                   position: 'absolute',
@@ -167,14 +167,14 @@ const NaturalBeautySection = () => {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.2)' : COLORS.shadow,
                   transform: [{ translateX: shimmerTranslate }],
                 }}
               />
             </View>
           </View>
           <View style={styles.imageContainer}>
-            <View style={[styles.skeletonCircle, { backgroundColor: colors.border }]}>
+            <View style={[styles.skeletonCircle, { backgroundColor: theme.dark ? COLORS.darkBorder : COLORS.borderColor }]}>
               <Animated.View
                 style={{
                   position: 'absolute',
@@ -182,7 +182,7 @@ const NaturalBeautySection = () => {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: theme.dark ? 'rgba(255, 255, 255, 0.2)' : COLORS.shadow,
                   transform: [{ translateX: shimmerTranslate }],
                 }}
               />
@@ -196,7 +196,7 @@ const NaturalBeautySection = () => {
       return (
         <View style={styles.contentContainer}>
           <View style={styles.textContainer}>
-            <Text style={[styles.title, { color: colors.title }]}>
+            <Text style={[styles.title, { color: theme.dark ? COLORS.darkTitle : COLORS.title }]}>
               The Natural{"\n"}Beauty Of A Jewelry{"\n"}Collection
             </Text>
           </View>
@@ -205,15 +205,15 @@ const NaturalBeautySection = () => {
               style={[
                 styles.circleBackground,
                 {
-                  shadowColor: 'rgba(195, 123, 95, 0.15)',
+                  shadowColor: COLORS.shadow,
                   shadowOffset: { width: 2, height: 2 },
                   shadowOpacity: 0.1,
-                  shadowRadius: 5,
-                  ...(Platform.OS === 'ios' && { backgroundColor: colors.card, borderRadius: 100 }),
+                  shadowRadius: SIZES.radius,
+                  ...(Platform.OS === 'ios' && { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card, borderRadius: SIZES.radius_lg }),
                 }
               ]}
             >
-              <View style={[styles.circle, { backgroundColor: colors.card }]}>
+              <View style={[styles.circle, { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card }]}>
                 <View style={styles.svgContainer}>
                   <SvgcurvedText small={undefined} />
                 </View>
@@ -228,7 +228,7 @@ const NaturalBeautySection = () => {
       <Animated.View style={{ opacity: fadeAnim }}>
         <View style={styles.contentContainer}>
           <View style={styles.textContainer}>
-            <Text style={[styles.title, { color: colors.title }]}>
+            <Text style={[styles.title, { color: theme.dark ? COLORS.darkTitle : COLORS.title }]}>
               The Natural{"\n"}Beauty Of A Jewelry{"\n"}Collection
             </Text>
           </View>
@@ -237,15 +237,15 @@ const NaturalBeautySection = () => {
               style={[
                 styles.circleBackground,
                 {
-                  shadowColor: 'rgba(195, 123, 95, 0.15)',
+                  shadowColor: COLORS.shadow,
                   shadowOffset: { width: 2, height: 2 },
                   shadowOpacity: 0.1,
-                  shadowRadius: 5,
-                  ...(Platform.OS === 'ios' && { backgroundColor: colors.card, borderRadius: 100 }),
+                  shadowRadius: SIZES.radius,
+                  ...(Platform.OS === 'ios' && { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card, borderRadius: SIZES.radius_lg }),
                 }
               ]}
             >
-              <View style={[styles.circle, { backgroundColor: colors.card }]}>
+              <View style={[styles.circle, { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card }]}>
                 <View style={styles.svgContainer}>
                   <SvgcurvedText small={undefined} />
                 </View>
@@ -258,10 +258,10 @@ const NaturalBeautySection = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
       {renderContent()}
       
-      <View style={{ alignItems: 'center', marginTop: 20 }}>
+      <View style={{ alignItems: 'center', marginTop: SIZES.margin }}>
         <View style={[styles.swiperContainer, { padding: 0 }]}>
           {loading && !refreshing ? (
             <SkeletonLoader />
@@ -285,16 +285,16 @@ const NaturalBeautySection = () => {
             />
           ) : (
             <View style={styles.emptyState}>
-              <Text style={{ ...FONTS.fontRegular, color: colors.text, marginBottom: 10 }}>
+              <Text style={{ ...FONTS.fontRegular, color: theme.dark ? COLORS.darkText : COLORS.text, marginBottom: SIZES.margin / 2 }}>
                 No banners available
               </Text>
               {error && (
-                <Text style={{ ...FONTS.fontRegular, color: COLORS.danger, marginBottom: 15, textAlign: 'center' }}>
+                <Text style={{ ...FONTS.fontRegular, color: COLORS.danger, marginBottom: SIZES.margin, textAlign: 'center' }}>
                   {error}
                 </Text>
               )}
               <TouchableOpacity 
-                style={[styles.retryButton, { backgroundColor: colors.primary }]}
+                style={[styles.retryButton, { backgroundColor: COLORS.primary }]}
                 onPress={() => fetchBanners()}
               >
                 <Text style={styles.retryText}>Try Again</Text>
@@ -312,8 +312,9 @@ const NaturalBeautySection = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 15,
-    marginTop: 20,
+    paddingHorizontal: SIZES.padding,
+    marginTop: SIZES.margin,
+    backgroundColor: COLORS.background,
   },
   contentContainer: {
     flexDirection: 'row',
@@ -323,34 +324,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    ...FONTS.Marcellus,
-    fontSize: 24,
-    lineHeight: 33,
+    ...FONTS.h3, // Using h3 for consistent typography
+    fontSize: SIZES.h4,
+    lineHeight: SIZES.h3 + 9,
+    color: COLORS.title,
   },
   skeletonTitle: {
     height: 80,
     width: '80%',
-    borderRadius: 8,
+    borderRadius: SIZES.radius_sm,
     overflow: 'hidden',
+    backgroundColor: COLORS.borderColor,
   },
   imageContainer: {
-    marginRight: 20,
+    marginRight: SIZES.margin,
   },
   circleBackground: {
     height: 110,
     width: 110,
-    borderRadius: 100,
+    borderRadius: SIZES.radius_lg,
+    backgroundColor: COLORS.card,
   },
   circle: {
     height: '100%',
     width: '100%',
-    borderRadius: 100,
+    borderRadius: SIZES.radius_lg,
+    backgroundColor: COLORS.card,
   },
   skeletonCircle: {
     height: 110,
     width: 110,
-    borderRadius: 100,
+    borderRadius: SIZES.radius_lg,
     overflow: 'hidden',
+    backgroundColor: COLORS.borderColor,
   },
   svgContainer: {
     position: 'absolute',
@@ -367,17 +373,19 @@ const styles = StyleSheet.create({
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: SIZES.padding + 4,
+    paddingVertical: SIZES.padding - 6,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.primary,
   },
   retryText: {
-    color: 'white',
+    color: COLORS.white,
     ...FONTS.fontMedium,
-    fontSize: 14,
+    fontSize: SIZES.font,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { IMAGES } from '../constants/Images';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BudgetCategoriesScreen = () => {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const navigation = useNavigation();
 
   const [categories, setCategories] = useState<any[]>([]);
@@ -44,7 +44,7 @@ const BudgetCategoriesScreen = () => {
         }
 
         const data = await fetchBudgetCategories(token);
-        setCategories(data);
+        setCategories(data || []);
       } catch (err) {
         console.error('Failed to load categories:', err);
         setError('Failed to load categories. Please try again.');
@@ -57,13 +57,12 @@ const BudgetCategoriesScreen = () => {
   }, []);
 
   const handleImageError = (imageUrl: string) => {
-    // console.log('Image failed to load:', imageUrl);
     setFailedImages(prev => new Set(prev).add(imageUrl));
   };
 
   const getWorkingImage = (item: any) => {
     if (failedImages.has(item.image)) {
-      return IMAGES.item11; // Fallback image
+      return IMAGES.item11;
     }
     return item.image;
   };
@@ -80,9 +79,9 @@ const BudgetCategoriesScreen = () => {
 
   if (loading) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.text, marginTop: 10 }]}>
+      <View style={[styles.centerContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={[styles.loadingText, { color: dark ? COLORS.darkText : COLORS.text }]}>
           Loading budget categories...
         </Text>
       </View>
@@ -91,13 +90,13 @@ const BudgetCategoriesScreen = () => {
 
   if (error) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.text }]}>{error}</Text>
+      <View style={[styles.centerContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+        <Text style={[styles.errorText, { color: dark ? COLORS.darkText : COLORS.text }]}>{error}</Text>
         <TouchableOpacity 
-          style={[styles.retryButton, { borderColor: colors.border }]}
+          style={[styles.retryButton, { borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor, backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}
           onPress={() => setLoading(true)}
         >
-          <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+          <Text style={[styles.retryText, { color: COLORS.primary }]}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -105,11 +104,11 @@ const BudgetCategoriesScreen = () => {
 
   if (categories.length === 0) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.emptyText, { color: colors.text }]}>
+      <View style={[styles.centerContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+        <Text style={[styles.emptyText, { color: dark ? COLORS.darkText : COLORS.text }]}>
           No budget categories found
         </Text>
-        <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+        <Text style={[styles.emptySubtext, { color: dark ? COLORS.darkTextLight : COLORS.textLight }]}>
           Check back later for budget options
         </Text>
       </View>
@@ -117,11 +116,11 @@ const BudgetCategoriesScreen = () => {
   }
 
   return (
-    <View style={[styles.flexContainer, { backgroundColor: colors.background }]}>
+    <View style={[styles.flexContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
       {/* Header */}
-      <View style={[styles.headerContainer, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.title }]}>Shop by Budget</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+      <View style={[styles.headerContainer, { borderBottomColor: dark ? COLORS.darkBorderColor : COLORS.borderColor }]}>
+        <Text style={[styles.headerTitle, { color: dark ? COLORS.darkTitle : COLORS.title }]}>Shop by Budget</Text>
+        <Text style={[styles.headerSubtitle, { color: dark ? COLORS.darkTextLight : COLORS.textLight }]}>
           Find jewelry within your price range
         </Text>
       </View>
@@ -145,8 +144,8 @@ const BudgetCategoriesScreen = () => {
                     { 
                       width: itemSize, 
                       height: itemSize, 
-                      backgroundColor: colors.card,
-                      shadowColor: colors.shadow || COLORS.shadow,
+                      backgroundColor: dark ? COLORS.darkCard : COLORS.card,
+                      shadowColor: dark ? COLORS.darkShadow : COLORS.shadow,
                     },
                   ]}
                   activeOpacity={0.8}
@@ -169,13 +168,13 @@ const BudgetCategoriesScreen = () => {
                     />
                   </View>
                   <View style={styles.textContainer}>
-                    <Text style={[styles.title, { color: colors.title }]} numberOfLines={1}>
+                    <Text style={[styles.title, { color: dark ? COLORS.darkTitle : COLORS.title }]} numberOfLines={1}>
                       {item.title}
                     </Text>
-                    <Text style={[styles.subtitle, { color: colors.text }]} numberOfLines={1}>
+                    <Text style={[styles.subtitle, { color: dark ? COLORS.darkText : COLORS.text }]} numberOfLines={1}>
                       {item.subtitle}
                     </Text>
-                    <Text style={[styles.priceRange, { color: colors.primary }]} numberOfLines={1}>
+                    <Text style={[styles.priceRange, { color: COLORS.primary }]} numberOfLines={1}>
                       ₹{item.min} - ₹{item.max}
                     </Text>
                   </View>
@@ -193,12 +192,14 @@ const BudgetCategoriesScreen = () => {
 const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   container: {
     flex: 1,
@@ -214,39 +215,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.h4,
+    ...FONTS.h3,
+    fontSize: SIZES.h3,
     textAlign: 'center',
     marginBottom: 4,
+    color: COLORS.title,
   },
   headerSubtitle: {
-    ...FONTS.fontSm,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontSm,
     textAlign: 'center',
+    color: COLORS.textLight,
   },
   loadingText: {
-    ...FONTS.font,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
     textAlign: 'center',
+    marginTop: SIZES.margin / 2,
+    color: COLORS.text,
   },
   errorText: {
-    ...FONTS.font,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
     textAlign: 'center',
     marginBottom: SIZES.margin,
+    color: COLORS.text,
   },
   retryButton: {
-    padding: SIZES.paddingSm,
+    padding: SIZES.padding - 4,
     borderWidth: 1,
     borderRadius: SIZES.radius,
+    backgroundColor: COLORS.card,
+    borderColor: COLORS.borderColor,
   },
   retryText: {
     ...FONTS.fontBold,
+    fontSize: SIZES.font,
+    color: COLORS.primary,
   },
   emptyText: {
-    ...FONTS.font,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.font,
     textAlign: 'center',
     marginBottom: 4,
+    color: COLORS.text,
   },
   emptySubtext: {
-    ...FONTS.fontSm,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontSm,
     textAlign: 'center',
+    color: COLORS.textLight,
   },
   row: {
     flexDirection: 'row',
@@ -260,6 +278,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    backgroundColor: COLORS.card,
   },
   imageContainer: {
     height: '60%',
@@ -271,7 +290,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     height: '40%',
-    padding: SIZES.radius_sm,
+    padding: SIZES.padding - 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -280,16 +299,20 @@ const styles = StyleSheet.create({
     fontSize: SIZES.font,
     textAlign: 'center',
     marginBottom: 2,
+    color: COLORS.title,
   },
   subtitle: {
-    ...FONTS.fontSm,
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontSm,
     textAlign: 'center',
     marginBottom: 4,
+    color: COLORS.text,
   },
   priceRange: {
     ...FONTS.fontBold,
     fontSize: SIZES.fontSm,
     textAlign: 'center',
+    color: COLORS.primary,
   },
 });
 

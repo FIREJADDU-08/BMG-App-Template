@@ -1,4 +1,3 @@
-// BlockbusterDeals.tsx
 import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text, ActivityIndicator, StyleSheet, ImageSourcePropType } from 'react-native';
 import { useTheme } from '@react-navigation/native';
@@ -35,7 +34,7 @@ type BlockbusterDealsProps = {
 };
 
 const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const dispatch = useDispatch();
   const { wishList } = useSelector((state: any) => state.wishList);
 
@@ -82,7 +81,6 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
           })
         );
       }
-      // Refresh wishlist after modification
       dispatch(fetchWishList());
     } catch (err) {
       console.error('Wishlist error:', err);
@@ -104,11 +102,11 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
   };
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: colors.background }]}>
+    <View style={[styles.wrapper, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
       {/* Header */}
       <View style={[GlobalStyleSheet.container, styles.header]}>
         <View style={styles.headerRow}>
-          <Text style={[FONTS.Marcellus, styles.headerTitle, { color: colors.title }]}>
+          <Text style={[FONTS.h3, styles.headerTitle, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
             Blockbuster Deals
           </Text>
         </View>
@@ -116,18 +114,18 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
 
       {/* Content */}
       {loadingFeatured ? (
-        <View style={styles.loaderContainer}>
+        <View style={[styles.loaderContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
           <ActivityIndicator size="small" color={COLORS.primary} />
-          <Text style={[FONTS.fontRegular, { color: colors.text, marginTop: 10 }]}>
+          <Text style={[FONTS.fontRegular, { color: dark ? COLORS.darkText : COLORS.text, marginTop: SIZES.margin / 2 }]}>
             Loading featured products...
           </Text>
         </View>
       ) : error ? (
-        <View style={styles.messageContainer}>
-          <Text style={[FONTS.fontRegular, { color: colors.text, marginBottom: SIZES.radius_sm, textAlign: 'center' }]}>
+        <View style={[styles.messageContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+          <Text style={[FONTS.fontRegular, { color: dark ? COLORS.darkText : COLORS.text, marginBottom: SIZES.margin / 2, textAlign: 'center' }]}>
             {error}
           </Text>
-          <TouchableOpacity onPress={loadFeaturedProducts} style={styles.retryButton}>
+          <TouchableOpacity onPress={loadFeaturedProducts} style={[styles.retryButton, { borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor }]}>
             <Text style={[FONTS.fontRegular, { color: COLORS.primary }]}>Tap to retry</Text>
           </TouchableOpacity>
         </View>
@@ -138,7 +136,7 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
               id: product.SNO,
               SNO: product.SNO,
               image: product.mainImage,
-              title: product.ITEMNAME || product.ITEMNAME || 'Jewelry Item',
+              title: product.ITEMNAME || product.SUBITEMNAME || 'Jewelry Item',
               price: `₹${typeof product.GrandTotal === 'number' 
                 ? product.GrandTotal.toFixed(2) 
                 : parseFloat(product.GrandTotal as string || '0').toFixed(2)}`,
@@ -151,16 +149,16 @@ const BlockbusterDeals = ({ navigation }: BlockbusterDealsProps) => {
             }))}
             onProductPress={(id) => navigation.navigate('ProductDetails', { sno: id })}
             favoriteIcon={
-              <Feather name="heart" size={20} color={COLORS.danger} fill={COLORS.danger} />
+              <Feather name="heart" size={SIZES.fontLg} color={COLORS.danger} fill={COLORS.danger} />
             }
           />
         </View>
       ) : (
-        <View style={styles.messageContainer}>
-          <Text style={[FONTS.fontRegular, { color: colors.text, textAlign: 'center' }]}>
+        <View style={[styles.messageContainer, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
+          <Text style={[FONTS.fontRegular, { color: dark ? COLORS.darkText : COLORS.text, textAlign: 'center' }]}>
             No featured products available at the moment.
           </Text>
-          <TouchableOpacity onPress={loadFeaturedProducts} style={styles.retryButton}>
+          <TouchableOpacity onPress={loadFeaturedProducts} style={[styles.retryButton, { borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor }]}>
             <Text style={[FONTS.fontRegular, { color: COLORS.primary }]}>Refresh</Text>
           </TouchableOpacity>
         </View>
@@ -173,9 +171,10 @@ const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
     paddingVertical: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   header: {
-    marginBottom: SIZES.radius,
+    marginBottom: SIZES.margin,
     paddingBottom: 0,
   },
   headerRow: {
@@ -184,23 +183,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: SIZES.h3,
+    color: COLORS.title,
   },
   loaderContainer: {
     height: 150,
     justifyContent: 'center',
     alignItems: 'center',
     padding: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   messageContainer: {
     height: 120,
     justifyContent: 'center',
     alignItems: 'center',
     padding: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   retryButton: {
-    marginTop: SIZES.radius_sm,
-    padding: SIZES.radius_sm,
+    marginTop: SIZES.margin / 2,
+    padding: SIZES.padding - 4,
+    borderWidth: 1,
+    borderRadius: SIZES.radius,
+    borderColor: COLORS.borderColor,
   },
   sliderContainer: {
     padding: 0,

@@ -390,7 +390,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                                 <Text style={{ ...FONTS.fontSemiBold, fontSize: 16, color: colors.title }}>
                                     Your Items
                                 </Text>
-                                <TouchableOpacity
+                                {/* <TouchableOpacity
                                     onPress={() => navigation.goBack()}
                                     style={{ flexDirection: 'row', alignItems: 'center' }}
                                 >
@@ -398,7 +398,7 @@ const Checkout = ({ navigation, route }: CheckoutScreenProps) => {
                                         Edit Cart
                                     </Text>
                                     <Feather name="edit-2" size={12} color={COLORS.primary} />
-                                </TouchableOpacity>
+                                </TouchableOpacity> */}
                             </View>
 
                             {products.length === 0 ? (

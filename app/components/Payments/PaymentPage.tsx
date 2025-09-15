@@ -103,8 +103,18 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
     const [userEmail, setUserEmail] = React.useState('');
     const [userContact, setUserContact] = React.useState('');
 
-    // Get data from navigation params
-    const { products, selectedAddress, orderSummary, paymentResult } = route.params || {};
+    // Get data from navigation params with proper defaults
+    const { 
+        products = [], 
+        selectedAddress = null, 
+        orderSummary = {
+            subtotal: 0,
+            gst: 0,
+            grandTotal: 0,
+            itemCount: 0
+        }, 
+        paymentResult = null 
+    } = route.params || {};
 
     React.useEffect(() => {
         const fetchUserData = async () => {
@@ -120,13 +130,6 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
 
         fetchUserData();
     }, []);
-
-    // Handle payment result when coming back from payment gateway
-    // React.useEffect(() => {
-    //     if (paymentResult) {
-    //         handlePaymentResult(paymentResult);
-    //     }
-    // }, [paymentResult]);
 
     const paymentMethods: PaymentMethod[] = [
         {
@@ -161,14 +164,31 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
     const getImageUrl = (imagePath?: string): string => {
         if (!imagePath || imagePath.length < 5) return 'https://via.placeholder.com/150';
         try {
-            const parsed = JSON.parse(imagePath);
-            let image = parsed?.[0] || '';
+            // Handle both string and array formats
+            let imageArray;
+            if (typeof imagePath === 'string') {
+                try {
+                    imageArray = JSON.parse(imagePath);
+                } catch {
+                    // If it's not valid JSON, treat it as a single image string
+                    imageArray = [imagePath];
+                }
+            } else if (Array.isArray(imagePath)) {
+                imageArray = imagePath;
+            } else {
+                return 'https://via.placeholder.com/150';
+            }
+
+            let image = imageArray?.[0] || '';
             if (!image || typeof image !== 'string') return 'https://via.placeholder.com/150';
+            
+            // Ensure proper URL format
             if (!image.startsWith('http')) {
-                image = `https://app.bmgjewellers.com${image}`;
+                image = `https://app.bmgjewellers.com${image.startsWith('/') ? image : '/' + image}`;
             }
             return image;
         } catch (err) {
+            console.error('Error parsing image path:', err);
             return 'https://via.placeholder.com/150';
         }
     };
@@ -209,100 +229,15 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                 tagNo: item.fullDetails?.TAGNO || '',
                 sno: item.itemTagSno,
                 imagePath: item.fullDetails?.ImagePath || '',
-                quantity: item.fullDetails?.quantity || 1
+                quantity: item.fullDetails?.quantity || 1,
+                // Include additional details that might be needed
+                category: item.fullDetails?.CATNAME || '',
+                material: item.fullDetails?.MaterialFinish || '',
+                size: item.fullDetails?.SIZENAME || '',
+                weight: item.fullDetails?.NETWT || 0
             }))
         };
     };
-
-    const getPaymentStatusText = (method: string, status: string = 'pending') => {
-        if (method === 'cod') {
-            return 'COD - Payment Pending';
-        } else if (method === 'razorpay') {
-            return status === 'completed' ? 'Online - Paid' : 'Online - Payment Pending';
-        }
-        return 'Payment Pending';
-    };
-
-    const getOrderStatus = (method: string, paymentStatus: string = 'pending') => {
-        if (method === 'cod') {
-            return 'CONFIRMED';
-        } else if (method === 'razorpay') {
-            return paymentStatus === 'completed' ? 'CONFIRMED' : 'PENDING';
-        }
-        return 'PENDING';
-    };
-
-    // const handlePaymentResult = async (result: any) => {
-    //     const { status, orderId, paymentId, error } = result;
-        
-    //     // Determine payment mode and status based on result
-    //     const paymentMode = 'ONLINE';
-        
-    //     // For online payments, verify the payment status with the server
-    //     let paymentStatus = 'PENDING';
-    //     let finalStatus = status;
-        
-    //     if (status === 'completed' || status === 'success') {
-    //         try {
-    //             // Call the payment status API to verify the payment
-    //             const statusResponse = await checkPaymentStatus({
-    //                 merchantTxnNo: orderId,
-    //                 originalTxnNo: orderId,
-    //                 transactionType: "STATUS"
-    //             });
-                
-    //             console.log('Payment status API response:', statusResponse);
-                
-    //             // Check if payment is actually successful based on API response
-    //             if (statusResponse && statusResponse.responseCode === "R1000" && statusResponse.status === "SUCCESS") {
-    //                 paymentStatus = 'PAID';
-    //                 finalStatus = 'completed';
-    //             } else {
-    //                 paymentStatus = 'FAILED';
-    //                 finalStatus = 'failed';
-    //             }
-    //         } catch (statusError) {
-    //             console.error('Error verifying payment status:', statusError);
-    //             paymentStatus = 'PENDING';
-    //             finalStatus = 'failed';
-    //         }
-    //     } else {
-    //         paymentStatus = 'FAILED';
-    //     }
-        
-    //     const orderDetails = {
-    //         orderId: orderId,
-    //         items: products,
-    //         total: orderSummary?.grandTotal || 0,
-    //         date: new Date().toISOString(),
-    //         status: getOrderStatus('razorpay', finalStatus),
-    //         address: selectedAddress,
-    //         paymentMode: paymentMode,
-    //         paymentStatus: paymentStatus,
-    //         paymentId: paymentId || null
-    //     };
-
-    //     if (finalStatus === 'completed' || finalStatus === 'success') {
-    //         // Payment successful - navigate to success modal
-    //         navigation.navigate('SuccessModal', {
-    //             orderDetails,
-    //             onDismiss: () => {
-    //                 // Navigate back to Cart instead of resetting
-    //                 navigation.navigate('MyCart');
-    //             }
-    //         });
-    //     } else {
-    //         // Payment failed - navigate to failure modal
-    //         navigation.navigate('FailureModal', {
-    //             errorMessage: error || 'Payment was unsuccessful. Please try again.',
-    //             orderDetails: orderDetails,
-    //             onDismiss: () => {
-    //                 // Navigate back to MyCart instead of resetting
-    //                 navigation.navigate('MyCart');
-    //             }
-    //         });
-    //     }
-    // };
 
     const handlePaymentInitiation = async (orderId: string, totalAmount: number, email: string, contact: string) => {
         try {
@@ -319,6 +254,8 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                 customerEmailID: email,
                 customerMobileNo: contact
             };
+
+            console.log('Initiating payment with data:', paymentData);
 
             // Step 1: Initiate payment
             const paymentResponse = await initiatePayment(paymentData);
@@ -381,7 +318,7 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
             
             // Prepare order data with correct payment mode and status
             const orderData = prepareOrderData(paymentMode, paymentStatus);
-            console.log('📦 Order Create Service:', JSON.stringify(orderData, null, 2));
+            console.log('📦 Order Create Service Data:', JSON.stringify(orderData, null, 2));
 
             // Call the order service
             const response = await createOrder(orderData);
@@ -400,14 +337,14 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                         status: orderStatus,
                         address: selectedAddress,
                         paymentMode: paymentMode,
-                        paymentStatus: paymentStatus
+                        paymentStatus: paymentStatus,
+                        paymentId: null
                     };
-                    console.log('📦 Order Details for SuccessModal:', JSON.stringify(orderDetails, null, 2));
+                    console.log('📦 Order Details for SuccessModal:', orderDetails);
 
                     navigation.navigate('SuccessModal', {
                         orderDetails,
                         onDismiss: () => {
-                            // Navigate to Home instead of resetting
                             navigation.navigate('MyCart');
                         }
                     });
@@ -442,7 +379,6 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                         navigation.navigate('FailureModal', {
                             errorMessage: 'Failed to initiate payment. Please try again.',
                             onDismiss: () => {
-                                // Navigate to MyCart instead of resetting
                                 navigation.navigate('MyCart');
                             }
                         });
@@ -469,7 +405,6 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
             navigation.navigate('FailureModal', {
                 errorMessage,
                 onDismiss: () => {
-                    // Navigate to MyCart instead of resetting
                     navigation.navigate('MyCart');
                 }
             });
@@ -528,16 +463,6 @@ const Payment = ({ navigation, route }: PaymentScreenProps) => {
                 }}>
                     {method.description}
                 </Text>
-                {!method.enabled && (
-                    <Text style={{
-                        ...FONTS.fontMedium,
-                        fontSize: 11,
-                        color: '#FF6B6B',
-                        marginTop: 4
-                    }}>
-                        Not available for jewelry orders
-                    </Text>
-                )}
             </View>
 
             <View style={{

@@ -66,6 +66,9 @@ import PaymentPage from "../components/Payments/PaymentPage";
 import OrderDetails from "../Screens/profile/OrderDetails";
 import SuccessModal from "../components/Modal/SuccessModal";
 import FailureModal from "../components/Modal/FailureModal";
+import PrivacyPolicyPage from "../Screens/profile/PrivacyPolicy";
+import TermsConditionsPage from "../Screens/profile/Terms&Conditions";
+import HelpCenterPage from "../Screens/profile/HelpCenter";
 
 //HomeComponents
 import JewelryCollection from "../HomeComponents/JewelryCollection";
@@ -204,6 +207,9 @@ const StackNavigator = () => {
           <Stack.Screen name="OrderDetails" component={OrderDetails} />
           <Stack.Screen name="FailureModal" component={FailureModal} />
           <Stack.Screen name="SuccessModal" component={SuccessModal} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyPage} />
+          <Stack.Screen name="TermsConditions" component={TermsConditionsPage} />
+          <Stack.Screen name="HelpCenter" component={HelpCenterPage} />
         </Stack.Navigator>
         </AddressProvider>
       </UserProvider>

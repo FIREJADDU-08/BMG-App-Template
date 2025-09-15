@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import { COLORS, FONTS } from '../../constants/theme';
+import { COLORS, FONTS, SIZES } from '../../constants/theme';
 import LikeBtn from '../LikeBtn';
 import { IMAGES } from '../../constants/Images';
 
@@ -23,7 +23,7 @@ type Props = {
   removebtn?: boolean;
   discount?: string;
   grid?: boolean;
-  review?: string; // Changed from review to status
+  review?: string;
   status?: string;
   likeBtn?: boolean;
   onPress?: () => void;
@@ -88,24 +88,23 @@ const CardStyle3 = ({
     return imageUrl || 'https://yourdomain.com/default-image.png';
   };
 
-  // Function to determine status color based on status value
   const getStatusColor = (status: string | undefined): string => {
-    if (!status) return theme.dark ? 'rgba(255,255,255,.5)' : 'rgba(0, 0, 0, 0.50)';
+    if (!status) return theme.dark ? COLORS.darkPlaceholder : COLORS.placeholder;
     
     switch (status.toUpperCase()) {
       case 'PENDING':
       case 'PROCESSING':
-        return COLORS.warning; // Yellow/Orange for pending or processing
+        return COLORS.warning;
       case 'SHIPPED':
-      case 'IN_DELIVERY': // Matches "In Delivery" text in original code
-        return COLORS.success; // Green for shipped or in delivery
+      case 'IN_DELIVERY':
+        return COLORS.success;
       case 'DELIVERED':
       case 'COMPLETED':
-        return COLORS.primary; // Primary color for delivered or completed
+        return COLORS.primary;
       case 'CANCELLED':
-        return COLORS.danger; // Red for cancelled
+        return COLORS.danger;
       default:
-        return theme.dark ? 'rgba(255,255,255,.5)' : 'rgba(0, 0, 0, 0.50)'; // Default color
+        return theme.dark ? COLORS.darkPlaceholder : COLORS.placeholder;
     }
   };
 
@@ -113,15 +112,15 @@ const CardStyle3 = ({
     <View
       style={[
         {
-          shadowColor: 'rgba(195, 123, 95, 0.25)',
+          shadowColor: COLORS.shadow,
           shadowOffset: { width: 2, height: 20 },
           shadowOpacity: 0.1,
           shadowRadius: 5,
-          marginTop: 15,
+          marginTop: SIZES.margin,
         },
         Platform.OS === 'ios' && {
-          backgroundColor: colors.card,
-          borderRadius: 20,
+          backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius,
         },
       ]}
     >
@@ -131,8 +130,8 @@ const CardStyle3 = ({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
-          backgroundColor: colors.card,
-          borderRadius: 20,
+          backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius,
         }}
         onPress={onPress}
       >
@@ -150,9 +149,9 @@ const CardStyle3 = ({
             <Text
               numberOfLines={1}
               style={{
-                ...FONTS.Marcellus,
-                fontSize: 18,
-                color: colors.title,
+                ...FONTS.marcellus,
+                fontSize: SIZES.h5,
+                color: theme.dark ? COLORS.darkTitle : COLORS.title,
                 flex: 1,
               }}
             >
@@ -165,17 +164,25 @@ const CardStyle3 = ({
               flexDirection: 'row',
               alignItems: 'center',
               gap: 5,
-              marginTop: 5,
+              marginTop: SIZES.margin / 2,
             }}
           >
-            <Text style={{ ...FONTS.Marcellus, fontSize: 18, color: colors.title }}>{price}</Text>
+            <Text
+              style={{
+                ...FONTS.marcellus,
+                fontSize: SIZES.h5,
+                color: theme.dark ? COLORS.darkTitle : COLORS.title,
+              }}
+            >
+              {price}
+            </Text>
             {discount && (
               <Text
                 style={{
-                  ...FONTS.Marcellus,
-                  fontSize: 14,
+                  ...FONTS.fontRegular,
+                  fontSize: SIZES.fontSm,
                   textDecorationLine: 'line-through',
-                  color: theme.dark ? 'rgba(255,255,255,.7)' : 'rgba(0, 0, 0, 0.70)',
+                  color: theme.dark ? COLORS.darkPlaceholder : COLORS.placeholder,
                 }}
               >
                 {discount}
@@ -185,8 +192,8 @@ const CardStyle3 = ({
               <Text
                 style={{
                   ...FONTS.fontRegular,
-                  fontSize: 14,
-                  color: theme.dark ? 'rgba(255,255,255,.7)' : 'rgba(0, 0, 0, 0.70)',
+                  fontSize: SIZES.fontSm,
+                  color: theme.dark ? COLORS.darkPlaceholder : COLORS.placeholder,
                 }}
               >
                 {review}
@@ -196,14 +203,14 @@ const CardStyle3 = ({
 
           {grid && (
             <Text
-                style={{
-                  ...FONTS.fontRegular,
-                  fontSize: 14,
-                  color: getStatusColor(status), // Use dynamic status color
-                }}
-              >
-                {status || '(2K Review)'}
-              </Text>
+              style={{
+                ...FONTS.fontRegular,
+                fontSize: SIZES.fontSm,
+                color: getStatusColor(status),
+              }}
+            >
+              {status || '(2K Review)'}
+            </Text>
           )}
 
           <View
@@ -211,14 +218,14 @@ const CardStyle3 = ({
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginTop: 5,
+              marginTop: SIZES.margin / 2,
             }}
           >
             {grid ? (
               <Text
                 style={{
                   ...FONTS.fontMedium,
-                  fontSize: 14,
+                  fontSize: SIZES.fontSm,
                   color: COLORS.danger,
                 }}
               >
@@ -228,7 +235,7 @@ const CardStyle3 = ({
               <Text
                 style={{
                   ...FONTS.fontMedium,
-                  fontSize: 14,
+                  fontSize: SIZES.fontSm,
                   color: success ? COLORS.success : COLORS.danger,
                 }}
               >
@@ -239,8 +246,8 @@ const CardStyle3 = ({
                 <Text
                   style={{
                     ...FONTS.fontMedium,
-                    fontSize: 14,
-                    color: '#B75151',
+                    fontSize: SIZES.fontSm,
+                    color: COLORS.danger,
                   }}
                 >
                   Remove From Wishlist
@@ -258,8 +265,8 @@ const CardStyle3 = ({
                   right: 0,
                   bottom: Platform.OS === 'web' ? -49 : -49,
                   backgroundColor: COLORS.primary,
-                  borderBottomRightRadius: 20,
-                  borderTopLeftRadius: 20,
+                  borderBottomRightRadius: SIZES.radius,
+                  borderTopLeftRadius: SIZES.radius,
                   height: 45,
                   width: 45,
                   justifyContent: 'center',
@@ -271,7 +278,7 @@ const CardStyle3 = ({
                     height: 24,
                     width: 24,
                     resizeMode: 'contain',
-                    tintColor: colors.card,
+                    tintColor: theme.dark ? COLORS.darkCard : COLORS.card,
                   }}
                   source={IMAGES.shopping}
                 />

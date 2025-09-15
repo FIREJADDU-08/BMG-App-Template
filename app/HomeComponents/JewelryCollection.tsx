@@ -83,7 +83,7 @@ const JewelryCollection = () => {
       onPress={() => handlePress(item.name)}
       activeOpacity={0.7}
     >
-      <View style={[styles.imageContainer, { backgroundColor: colors.card }]}>
+      <View style={[styles.imageContainer, { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card }]}>
         <Image
           source={typeof item.image === 'string' ? { uri: item.image } : item.image}
           style={styles.image}
@@ -92,29 +92,29 @@ const JewelryCollection = () => {
         />
       </View>
       <Text 
-        style={[styles.categoryName, { color: colors.text }]}
+        style={[styles.categoryName, { color: theme.dark ? COLORS.darkText : COLORS.text }]}
         numberOfLines={2}
         ellipsizeMode="tail"
       >
         {item.name}
       </Text>
     </TouchableOpacity>
-  ), [colors, handlePress]);
+  ), [theme.dark, handlePress]);
 
   if (loading && !refreshing) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={[styles.loadingText, { color: colors.text }]}>Loading collections...</Text>
+        <Text style={[styles.loadingText, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>Loading collections...</Text>
       </View>
     );
   }
 
   if (error && categories.length === 0) {
     return (
-      <View style={[styles.container, styles.errorContainer, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, styles.errorContainer, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
         <Text style={styles.errorText}>⚠️</Text>
-        <Text style={[styles.errorMessage, { color: colors.text }]}>
+        <Text style={[styles.errorMessage, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>
           {error}
         </Text>
         <TouchableOpacity 
@@ -128,9 +128,9 @@ const JewelryCollection = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
       <View style={styles.titleContainer}>
-        <Text style={[styles.title, { color: colors.text }]}>
+        <Text style={[styles.title, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>
           Our Jewelry{"\n"} Collections
         </Text>
         {categories.length > 0 && (
@@ -169,25 +169,29 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: SIZES.padding,
     minHeight: 180,
+    backgroundColor: COLORS.background,
   },
   titleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginHorizontal: SIZES.margin,
-    marginBottom: 20,
+    marginBottom: SIZES.margin,
   },
   scrollContent: {
     paddingHorizontal: SIZES.margin,
   },
   title: {
     ...FONTS.h3,
-    lineHeight: 30,
+    fontSize: SIZES.h4,
+    lineHeight: SIZES.h3 + 6,
     flex: 1,
+    color: COLORS.text,
   },
   seeAllText: {
-    ...FONTS.fontMedium,
-    fontSize: SIZES.font,
+    ...FONTS.subheading,
+    fontSize: SIZES.h5,
+    color: COLORS.primary,
   },
   categoryItem: {
     marginRight: CARD_MARGIN,
@@ -200,15 +204,16 @@ const styles = StyleSheet.create({
     borderRadius: CARD_WIDTH / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: COLORS.black,
+    marginBottom: SIZES.margin / 2,
+    shadowColor: COLORS.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: SIZES.radius,
     elevation: 3,
+    backgroundColor: COLORS.card,
   },
   image: {
     width: CARD_WIDTH - 30,
@@ -219,37 +224,44 @@ const styles = StyleSheet.create({
     fontSize: SIZES.fontSm,
     textAlign: 'center',
     maxWidth: CARD_WIDTH,
+    color: COLORS.text,
   },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: SIZES.padding * 2,
+    backgroundColor: COLORS.background,
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: SIZES.margin / 2,
     ...FONTS.fontRegular,
     fontSize: SIZES.font,
+    color: COLORS.text,
   },
   errorContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: SIZES.padding * 2,
+    paddingHorizontal: SIZES.padding,
+    backgroundColor: COLORS.background,
   },
   errorText: {
-    fontSize: 40,
-    marginBottom: 10,
+    fontSize: SIZES.h2,
+    marginBottom: SIZES.margin / 2,
+    color: COLORS.danger,
   },
   errorMessage: {
     ...FONTS.fontRegular,
     fontSize: SIZES.font,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: SIZES.margin,
+    color: COLORS.text,
   },
   retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: SIZES.padding + 4,
+    paddingVertical: SIZES.padding - 4,
     borderRadius: SIZES.radius_lg,
+    backgroundColor: COLORS.primary,
   },
   retryText: {
     color: COLORS.white,

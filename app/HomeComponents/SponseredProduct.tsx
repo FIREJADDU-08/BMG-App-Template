@@ -68,7 +68,7 @@ const SponsoredProducts = () => {
     <View style={{ backgroundColor: colors.background, width: '100%' }}>
       <View style={[GlobalStyleSheet.container, { paddingBottom: 5 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ ...FONTS.Marcellus, fontSize: 20, color: colors.title }}>Best Designs</Text>
+          <Text style={{ ...FONTS.h3, fontSize: 20, color: colors.title }}>Best Designs</Text>
           {/* <TouchableOpacity>
             <Text style={{ ...FONTS.fontRegular, fontSize: 13, color: colors.title }}>See All</Text>
           </TouchableOpacity> */}

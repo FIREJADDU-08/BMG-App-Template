@@ -11,7 +11,7 @@ import {
 import { useNavigation, useTheme } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
 import { getOfferBanners, getImageUrl } from "../Services/OfferBannerService";
-import { FONTS, COLORS } from "../constants/theme";
+import { FONTS, COLORS, SIZES } from "../constants/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -20,7 +20,7 @@ export default function BannerSlider() {
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
     const navigation = useNavigation<any>();
-    const { colors } = useTheme();
+    const { colors, dark } = useTheme();
 
     useEffect(() => {
         const fetchBanners = async () => {
@@ -29,7 +29,6 @@ export default function BannerSlider() {
                 setBanners(data || []);
             } catch (error) {
                 console.error("Failed to load banners:", error);
-                // Set empty array instead of throwing to prevent app crash
                 setBanners([]);
             } finally {
                 setLoading(false);
@@ -50,9 +49,9 @@ export default function BannerSlider() {
 
     if (loading) {
         return (
-            <View style={[styles.loadingContainer, { backgroundColor: colors.card }]}>
+            <View style={[styles.loadingContainer, { backgroundColor: dark ? COLORS.darkCard : COLORS.card }]}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={[styles.loadingText, { color: colors.text }]}>
+                <Text style={[styles.loadingText, { color: dark ? COLORS.darkText : COLORS.text }]}>
                     Loading offers...
                 </Text>
             </View>
@@ -64,10 +63,10 @@ export default function BannerSlider() {
             <View
                 style={[
                     styles.placeholderContainer,
-                    { backgroundColor: colors.card, borderColor: colors.border },
+                    { backgroundColor: dark ? COLORS.darkCard : COLORS.card, borderColor: dark ? COLORS.darkBorderColor : COLORS.borderColor },
                 ]}
             >
-                <Text style={[styles.placeholderText, { color: colors.text }]}>
+                <Text style={[styles.placeholderText, { color: dark ? COLORS.darkText : COLORS.text }]}>
                     No offers available
                 </Text>
             </View>
@@ -75,16 +74,16 @@ export default function BannerSlider() {
     }
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: dark ? COLORS.darkBackground : COLORS.background }]}>
             {/* Section Header */}
             <View style={styles.headerContainer}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                <Text style={[styles.sectionTitle, { color: dark ? COLORS.darkTitle : COLORS.title }]}>
                     Exclusive Offers
                 </Text>
                 <Text
                     style={[
                         styles.sectionSubtitle,
-                        { color: colors.textSecondary || COLORS.textLight },
+                        { color: dark ? COLORS.darkTextLight : COLORS.textLight },
                     ]}
                 >
                     Grab the best deals on jewelry
@@ -93,7 +92,7 @@ export default function BannerSlider() {
 
             {/* Carousel */}
             <Carousel
-                width={width - 32}
+                width={width - SIZES.padding * 2}
                 height={width * 0.55}
                 data={banners}
                 loop
@@ -115,7 +114,7 @@ export default function BannerSlider() {
                                 transform: [
                                     { scale: index === currentIndex ? 1 : 0.95 },
                                 ],
-                                backgroundColor: colors.card,
+                                backgroundColor: dark ? COLORS.darkCard : COLORS.card,
                             },
                         ]}
                     >
@@ -129,19 +128,18 @@ export default function BannerSlider() {
                             resizeMode="cover"
                             onError={(e) => {
                                 console.log("Image failed to load:", item.image_path);
-                                // You could set a fallback image here if needed
                             }}
                         />
 
-                        <View style={styles.gradientOverlay} />
+                        <View style={[styles.gradientOverlay, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]} />
 
                         <View style={styles.contentContainer}>
                             <View style={styles.textContainer}>
-                                <Text style={styles.titleText} numberOfLines={2}>
+                                <Text style={[styles.titleText, { color: COLORS.white }]} numberOfLines={2}>
                                     {item.title || "Exclusive Jewelry Collection"}
                                 </Text>
                                 {item.subtitle && (
-                                    <Text style={styles.subtitleText} numberOfLines={1}>
+                                    <Text style={[styles.subtitleText, { color: COLORS.white }]} numberOfLines={1}>
                                         {item.subtitle}
                                     </Text>
                                 )}
@@ -169,7 +167,7 @@ export default function BannerSlider() {
                                 backgroundColor:
                                     index === currentIndex
                                         ? COLORS.primary
-                                        : `${COLORS.primary}50`,
+                                        : dark ? COLORS.darkBorderColor : `${COLORS.primary}50`,
                                 width: index === currentIndex ? 24 : 8,
                             },
                         ]}
@@ -182,25 +180,28 @@ export default function BannerSlider() {
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 20,
+        marginVertical: SIZES.margin,
+        backgroundColor: COLORS.background,
     },
     headerContainer: {
-        paddingHorizontal: 16,
-        marginBottom: 16,
+        paddingHorizontal: SIZES.padding,
+        marginBottom: SIZES.margin,
         alignItems: "center",
     },
     sectionTitle: {
-        ...FONTS.Marcellus,
-        fontSize: 26,
+        ...FONTS.h3,
+        fontSize: SIZES.h3,
         fontWeight: "600",
         textAlign: "center",
         marginBottom: 4,
+        color: COLORS.title,
     },
     sectionSubtitle: {
         ...FONTS.fontRegular,
-        fontSize: 14,
+        fontSize: SIZES.fontSm,
         textAlign: "center",
         fontStyle: "italic",
+        color: COLORS.textLight,
     },
     carousel: {
         alignSelf: "center",
@@ -209,94 +210,102 @@ const styles = StyleSheet.create({
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        marginHorizontal: 16,
-        borderRadius: 12,
+        marginHorizontal: SIZES.padding,
+        borderRadius: SIZES.radius_lg,
+        backgroundColor: COLORS.card,
     },
     loadingText: {
         ...FONTS.fontRegular,
-        fontSize: 14,
-        marginTop: 8,
+        fontSize: SIZES.font,
+        marginTop: SIZES.margin / 2,
+        color: COLORS.text,
     },
     placeholderContainer: {
         height: width * 0.55,
         justifyContent: "center",
         alignItems: "center",
-        borderRadius: 12,
-        marginHorizontal: 16,
+        borderRadius: SIZES.radius_lg,
+        marginHorizontal: SIZES.padding,
         borderWidth: 1,
         borderStyle: "dashed",
+        borderColor: COLORS.borderColor,
+        backgroundColor: COLORS.card,
     },
     placeholderText: {
         ...FONTS.fontRegular,
-        fontSize: 16,
+        fontSize: SIZES.font,
+        color: COLORS.text,
     },
     slideContainer: {
         position: "relative",
-        borderRadius: 12,
+        borderRadius: SIZES.radius_lg,
         overflow: "hidden",
         marginHorizontal: 4,
-        shadowColor: "#000",
+        shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowRadius: SIZES.radius,
         elevation: 8,
+        backgroundColor: COLORS.card,
     },
     bannerImage: {
         width: "100%",
         height: "100%",
-        borderRadius: 12,
+        borderRadius: SIZES.radius_lg,
     },
     contentContainer: {
         position: "absolute",
         left: 0,
         right: 0,
         bottom: 0,
-        padding: 16,
+        padding: SIZES.padding,
     },
     textContainer: {
         maxWidth: "75%",
     },
     titleText: {
-        ...FONTS.Marcellus,
-        color: COLORS.white,
-        fontSize: 24,
-        lineHeight: 28,
+        ...FONTS.h4,
+        fontSize: SIZES.h4,
+        lineHeight: SIZES.h4 + 4,
         fontWeight: "600",
-        marginBottom: 6,
+        marginBottom: SIZES.margin / 2,
         textShadowColor: "rgba(0,0,0,0.8)",
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 3,
+        color: COLORS.white,
     },
     subtitleText: {
         ...FONTS.fontRegular,
-        color: COLORS.white,
-        fontSize: 14,
-        lineHeight: 18,
-        marginBottom: 72,
+        fontSize: SIZES.fontSm,
+        lineHeight: SIZES.fontSm + 4,
+        marginBottom: SIZES.margin * 3,
         textShadowColor: "rgba(0,0,0,0.6)",
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
+        color: COLORS.white,
     },
     cornerDecoration: {
         position: "absolute",
-        top: 12,
-        right: 12,
+        top: SIZES.padding - 4,
+        right: SIZES.padding - 4,
         width: 24,
         height: 24,
         borderTopWidth: 3,
         borderRightWidth: 3,
-        borderTopRightRadius: 8,
+        borderTopRightRadius: SIZES.radius_sm,
+        borderColor: COLORS.primary,
     },
     paginationContainer: {
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-        marginTop: 16,
-        paddingHorizontal: 16,
+        marginTop: SIZES.margin,
+        paddingHorizontal: SIZES.padding,
     },
     paginationDot: {
         height: 8,
         borderRadius: 4,
         marginHorizontal: 3,
+        backgroundColor: COLORS.primary,
     },
 });

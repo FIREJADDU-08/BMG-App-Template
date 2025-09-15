@@ -25,7 +25,7 @@ import {
   InteractionManager
 } from 'react-native';
 import { GlobalStyleSheet } from '../../constants/StyleSheet';
-import { COLORS, FONTS, SIZES } from '../../constants/theme';
+import { COLORS, FONTS, SIZES, ICONS } from '../../constants/theme';
 import { ScrollView } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { IMAGES } from '../../constants/Images';
@@ -71,6 +71,7 @@ const OccasionBanner = createLazyComponent(() => import('../../HomeComponents/Oc
 const OfferBanner = createLazyComponent(() => import('../../HomeComponents/OfferBanner'), 'OfferBanner');
 const RingCollection = createLazyComponent(() => import('../../HomeComponents/RingCollection'), 'RingCollection');
 const Footer = createLazyComponent(() => import('../../HomeComponents/Footer'), 'Footer');
+
 // Constants
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SEARCH_DEBOUNCE_DELAY = 500;
@@ -395,7 +396,7 @@ const SearchBar: React.FC<{
     <TextInput
       style={style}
       placeholder="Search products, collections..."
-      placeholderTextColor={theme.dark ? 'rgba(255,255,255,0.6)' : '#666666'}
+      placeholderTextColor={theme.dark ? COLORS.darkPlaceholder : COLORS.placeholder}
       value={value}
       onChangeText={onChangeText}
       onSubmitEditing={onSubmit}
@@ -448,30 +449,32 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   // Enhanced memoized values
   const headerStyle = useMemo(() => ({
-    backgroundColor: colors.background,
+    backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background,
     paddingHorizontal: SIZES.padding,
-    shadowColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)',
+    shadowColor: Platform.OS === 'ios' ? COLORS.shadow : COLORS.dark,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  }), [colors.background]);
+  }), [theme.dark]);
 
   const searchBarStyle = useMemo(() => ({
     ...FONTS.fontRegular,
     fontSize: SIZES.fontLg,
     height: 52,
-    backgroundColor: colors.card,
+    backgroundColor: theme.dark ? COLORS.darkInput : COLORS.input,
     borderRadius: SIZES.radius_lg,
     paddingLeft: SIZES.padding + 5,
     paddingRight: 50, // Space for search icon
-    color: colors.title,
-    shadowColor: Platform.OS === 'ios' ? COLORS.primaryLight : 'rgba(0,0,0,0.3)',
+    color: theme.dark ? COLORS.darkText : COLORS.text,
+    shadowColor: Platform.OS === 'ios' ? COLORS.primaryLight : COLORS.dark,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
-  }), [colors.card, colors.title]);
+    borderWidth: 1,
+    borderColor: theme.dark ? COLORS.darkBorderColor : COLORS.borderColor,
+  }), [theme.dark]);
 
   // Enhanced utility functions
   const getImageUrl = useCallback((imagePath?: string): string => {
@@ -616,7 +619,6 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
     try {
       await cartService.removeItem(item.sno);
       await fetchCartProducts();
-      // Show success feedback
       Alert.alert('Success', 'Item removed from cart');
     } catch (error) {
       console.error('Error removing cart item:', error);
@@ -627,7 +629,6 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handleAddToWishList = useCallback((data: any) => {
     try {
       dispatch(addTowishList(data));
-      // Provide user feedback
       Alert.alert('Success', 'Item added to wishlist');
     } catch (error) {
       console.error('Error adding to wishlist:', error);
@@ -665,7 +666,6 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
   // Enhanced effects
   useEffect(() => {
     const initializeData = async () => {
-      // Use InteractionManager for better performance
       InteractionManager.runAfterInteractions(async () => {
         stateDispatch({ 
           type: 'SET_LOADING', 
@@ -695,7 +695,6 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
     useCallback(() => {
       fetchCartProducts();
       return () => {
-        // Cleanup on unfocus
         if (searchTimeoutRef.current) {
           clearTimeout(searchTimeoutRef.current);
         }
@@ -720,10 +719,10 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
           defaultSource={IMAGES.user2}
         />
         <View style={styles.greetingContainer}>
-          <Text style={[styles.greetingText, { color: colors.title }]}>
+          <Text style={[styles.greetingText, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>
             Hello
           </Text>
-          <Text style={[styles.usernameText, { color: colors.title }]}>
+          <Text style={[styles.usernameText, { color: theme.dark ? COLORS.darkText : COLORS.text }]}>
             {state.userData.username}
           </Text>
         </View>
@@ -731,17 +730,16 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       <TouchableOpacity
         onPress={() => navigation.navigate('Notification')}
-        style={[styles.notificationButton, { backgroundColor: colors.card }]}
+        style={[styles.notificationButton, { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card }]}
         accessible={true}
         accessibilityLabel="Open notifications"
         accessibilityRole="button"
         accessibilityHint="View your notifications"
       >
         <Image
-          style={[styles.bellIcon, { tintColor: colors.title }]}
+          style={[styles.bellIcon, { tintColor: theme.dark ? COLORS.darkText : COLORS.text }]}
           source={IMAGES.bell}
         />
-        {/* Add notification badge if needed */}
       </TouchableOpacity>
     </View>
   );
@@ -772,10 +770,10 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
   // Enhanced loading state
   if (state.loading.main) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
         <StatusBar 
           barStyle={theme.dark ? 'light-content' : 'dark-content'} 
-          backgroundColor={colors.background} 
+          backgroundColor={theme.dark ? COLORS.darkBackground : COLORS.background} 
         />
         <LoadingIndicator message="Loading home content..." showSkeleton />
       </SafeAreaView>
@@ -783,10 +781,10 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
       <StatusBar 
         barStyle={theme.dark ? 'light-content' : 'dark-content'} 
-        backgroundColor={colors.background} 
+        backgroundColor={theme.dark ? COLORS.darkBackground : COLORS.background} 
       />
       
       {renderOfflineIndicator()}
@@ -802,17 +800,17 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
             colors={[COLORS.primary]}
             tintColor={COLORS.primary}
             title="Pull to refresh"
-            titleColor={colors.title}
+            titleColor={theme.dark ? COLORS.darkText : COLORS.text}
           />
         }
         accessible={true}
         accessibilityLabel="Home screen content"
       >
-        <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.mainContainer, { backgroundColor: theme.dark ? COLORS.darkBackground : COLORS.background }]}>
           {renderHeader()}
           {renderSearchBar()}
           
-          <View style={[styles.shadowBox, { backgroundColor: colors.card }]} />
+          <View style={[styles.shadowBox, { backgroundColor: theme.dark ? COLORS.darkCard : COLORS.card }]} />
 
           <LazyWrapper name="Popular Nearby">
             <PopularNearbySection />
@@ -890,7 +888,6 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
           <FeaturedNowSection navigation={navigation} />
         </LazyWrapper>
 
-        {/* Conditionally render best design products */}
         {state.errors.bestDesign ? (
           <ErrorComponent 
             message={state.errors.bestDesign}
@@ -916,53 +913,34 @@ const Home: React.FC<HomeScreenProps> = ({ navigation }) => {
           <RingCollection navigation={navigation}  />
         </LazyWrapper> 
 
-        {/* Optional components that can be toggled */}
-         {/* <LazyWrapper name="People Also Viewed">
-          <PeopleAlsoViewed navigation={navigation} />
-        </LazyWrapper>
-
-        <LazyWrapper name="Great Savings">
-          <GreatSavingsSection navigation={navigation} />
-        </LazyWrapper> 
-         */}
-         
         <Footer />    
-
-        {/* Add scroll to top button */}
-        {/* <TouchableOpacity 
-          style={[styles.scrollToTopButton, { backgroundColor: colors.primary }]}
-          onPress={scrollToTop}
-          accessible={true}
-          accessibilityLabel="Scroll to top"
-          accessibilityRole="button"
-        >
-          <Feather name="arrow-up" size={20} color="black" />
-        </TouchableOpacity> */}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-// Enhanced styles with better responsive design and util integration
+// Enhanced styles with theme integration
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background, // Default to light theme background
   },
   scrollContent: {
-    paddingBottom: SIZES.padding * 7, // More space for better UX
+    paddingBottom: SIZES.padding * 7,
   },
   mainContainer: {
     marginHorizontal: SIZES.margin / 3,
     marginVertical: SIZES.margin / 3,
     marginBottom: 0,
     paddingBottom: 0,
+    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 70, // Slightly taller for better touch targets
-    paddingHorizontal: SIZES.padding - 5,
+    height: 70,
+    paddingHorizontal: SIZES.padding,
     paddingVertical: SIZES.padding - 5,
   },
   userSection: {
@@ -984,14 +962,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greetingText: {
-    ...FONTS.Marcellus,
+    ...FONTS.subheading,
     fontSize: SIZES.font,
     lineHeight: SIZES.font + 4,
+    color: COLORS.text,
   },
   usernameText: {
-    ...FONTS.fontSemiBold,
+    ...FONTS.subheading,
     fontSize: SIZES.h5,
     lineHeight: SIZES.h5 + 4,
+    color: COLORS.text,
   },
   notificationButton: {
     height: SIZES.h3 * 2,
@@ -999,15 +979,17 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius_lg + 1,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: COLORS.primaryLight,
+    shadowColor: COLORS.shadow,
     shadowOffset: { width: 2, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: SIZES.radius_lg - 7,
     elevation: 5,
+    backgroundColor: COLORS.card,
   },
   bellIcon: {
     width: SIZES.h6 + 6,
     height: SIZES.h6 + 6,
+    tintColor: COLORS.text,
   },
   searchContainer: {
     marginTop: SIZES.margin + 5,
@@ -1018,7 +1000,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: SIZES.padding,
     top: SIZES.fontLg,
-    padding: 5, // Better touch target
+    padding: 5,
   },
   searchImage: {
     height: SIZES.h6 + 4,
@@ -1032,12 +1014,14 @@ const styles = StyleSheet.create({
     marginHorizontal: SIZES.margin + 5,
     marginTop: -40,
     zIndex: -1,
+    backgroundColor: COLORS.card,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: SIZES.padding + 5,
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: SIZES.margin - 3,
@@ -1048,6 +1032,7 @@ const styles = StyleSheet.create({
   skeletonContainer: {
     padding: SIZES.padding + 5,
     gap: SIZES.margin,
+    backgroundColor: COLORS.background,
   },
   skeletonHeader: {
     height: SIZES.h2 * 2 + 4,
@@ -1079,6 +1064,7 @@ const styles = StyleSheet.create({
   errorIcon: {
     fontSize: SIZES.h2 + 4,
     marginBottom: SIZES.margin - 5,
+    color: COLORS.danger,
   },
   errorText: {
     ...FONTS.fontMedium,
@@ -1106,7 +1092,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: SIZES.padding + 5,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
   },
   errorBoundaryText: {
     ...FONTS.fontSemiBold,
@@ -1137,22 +1123,6 @@ const styles = StyleSheet.create({
     fontSize: SIZES.fontSm - 1,
     ...FONTS.fontMedium,
   },
-  scrollToTopButton: {
-    position: 'absolute',
-    bottom: SIZES.margin + 5,
-    right: SIZES.margin + 5,
-    width: SIZES.h3 * 2 + 2,
-    height: SIZES.h3 * 2 + 2,
-    borderRadius: (SIZES.h3 * 2 + 2) / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: SIZES.radius_sm - 4,
-    elevation: 5,
-  },
-  // Responsive styles
   ...Platform.select({
     ios: {
       headerIOS: {
