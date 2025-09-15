@@ -14,24 +14,46 @@ import { IMAGES } from '../constants/Images';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+// ✅ Helper: Capitalize first letter of a sentence
+const capitalizeSentence = (text: string) => {
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
 
-export default class SwipeBox extends Component {
-
-
-  rightSwipe = (progress:any, dragX:any) => {
+export default class SwipeBox extends Component<any> {
+  rightSwipe = (progress: any, dragX: any) => {
     const scale = dragX.interpolate({
       inputRange: [45, 90],
       outputRange: [0, 1],
-      extrapolate: "clamp",
+      extrapolate: 'clamp',
     });
 
-
     return (
-      <TouchableOpacity onPress={() => { this.close(); this.props.handleDelete() }} activeOpacity={0.6}>
-        <View style={[styles.deleteBox, { backgroundColor: this.props.theme.dark ? COLORS.white : COLORS.primary }]}>
+      <TouchableOpacity
+        onPress={() => {
+          this.close();
+          this.props.handleDelete();
+        }}
+        activeOpacity={0.6}>
+        <View
+          style={[
+            styles.deleteBox,
+            {
+              backgroundColor: this.props.theme.dark
+                ? COLORS.white
+                : COLORS.primary,
+            },
+          ]}>
           <Animated.View>
             <Image
-              style={{ height: 20, width: 20, resizeMode: 'contain', tintColor: this.props.theme.dark ? COLORS.primary : COLORS.white }}
+              style={[
+                styles.deleteIcon,
+                {
+                  tintColor: this.props.theme.dark
+                    ? COLORS.primary
+                    : COLORS.white,
+                },
+              ]}
               source={IMAGES.delete}
             />
           </Animated.View>
@@ -40,52 +62,79 @@ export default class SwipeBox extends Component {
     );
   };
 
-  updateRef = ref => {
+  updateRef = (ref: any) => {
     this._swipeableRow = ref;
   };
+
   close = () => {
     this._swipeableRow.close();
   };
 
   render() {
+    const { colors, data } = this.props;
+
     return (
-      <Swipeable
-        ref={this.updateRef}
-        friction={2}
-        renderRightActions={this.rightSwipe}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: this.props.colors.border,
-            marginHorizontal: -15,
-            paddingHorizontal: 30,
-            paddingBottom: 10,
-            paddingTop: 10,
-            marginRight: 5,
-          }}
-        >
-          <Image
-            style={{ height: 60, width: 60, borderRadius: 20 }}
-            source={this.props.data.image}
-          />
-          <View>
-            <Text style={{ ...FONTS.fontMedium, fontSize: 18, color: this.props.colors.title }}>{this.props.data.title}</Text>
-            <Text style={{ ...FONTS.fontRegular, fontSize: 13, color: this.props.colors.title }}>{this.props.data.date}</Text>
+      <View style={styles.container}>
+        <Swipeable
+          ref={this.updateRef}
+          friction={2}
+          renderRightActions={this.rightSwipe}>
+          <View style={[styles.row, { borderBottomColor: colors.border }]}>
+            <Image style={styles.avatar} source={data.image} />
+            <View>
+              <Text style={styles.title}>
+                {capitalizeSentence(data.title)}
+              </Text>
+              <Text style={styles.message}>
+                {capitalizeSentence(data.message)}
+              </Text>
+              <Text style={styles.date}>
+                {data.date}
+              </Text>
+            </View>
           </View>
-        </View>
-      </Swipeable>
+        </Swipeable>
+      </View>
     );
   }
-};
+}
+
 const styles = StyleSheet.create({
   container: {
-    height: 80,
+    height: 120,
     width: SCREEN_WIDTH,
     justifyContent: 'center',
-    padding: 20,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: 1,
+    marginHorizontal: -15,
+    paddingHorizontal: 30,
+    paddingBottom: 10,
+    paddingTop: 10,
+    marginRight: 5,
+  },
+  avatar: {
+    height: 80,
+    width: 100,
+    borderRadius: 10,
+  },
+  title: {
+    ...FONTS.fontMedium,
+    fontSize: 18,
+    color: COLORS.primary,
+  },
+  message: {
+    ...FONTS.fontMedium,
+    fontSize: 18,
+    color: COLORS.title,
+  },
+  date: {
+    ...FONTS.fontRegular,
+    fontSize: 13,
+    color: COLORS.label,
   },
   deleteBox: {
     backgroundColor: COLORS.primary,
@@ -95,6 +144,11 @@ const styles = StyleSheet.create({
     height: 80,
     right: 0,
     borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20
+    borderBottomLeftRadius: 20,
+  },
+  deleteIcon: {
+    height: 20,
+    width: 20,
+    resizeMode: 'contain',
   },
 });

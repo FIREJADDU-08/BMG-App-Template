@@ -1,181 +1,395 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
-import LikeBtn from '../LikeBtn';
-import { FONTS, COLORS } from '../../constants/theme';
-import { useNavigation, useTheme } from '@react-navigation/native';
-
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Platform,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { FONTS, COLORS, SIZES } from '../../constants/theme';
+import { useTheme } from '@react-navigation/native';
 import { IMAGES } from '../../constants/Images';
-import { useDispatch, useSelector } from 'react-redux';
-import { removeFromwishList } from '../../redux/reducer/wishListReducer';
-
+import { useDispatch } from 'react-redux';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import {
+  addProductToWishList,
+  removeProductFromWishList,
+} from '../../redux/reducer/wishListReducer';
+import {
+  addItemToCart,
+  removeItemFromCart,
+} from '../../redux/reducer/cartReducer';
 
 type Props = {
-    id : string,
-    title : string;
-    color ?: any;
-    price : string;
-    image ?: any;
-    offer ?: string;
-    closebtn?:any;
-    Cardstyle4?:any;
-    removelikebtn?:any;
-    discount?:any;
-    wishlist?:any;
-    card3?:any;
-    likebtn?:any;
-    onPress ?:any,
-    onPress1 ?: (e : any) => void,
-    onPress2 ?: (e : any) => void,
-}
+  id: string;
+  title: string;
+  price: string | number;
+  image?: any;
+  discount?: string | number;
+  review?: string;
+  closebtn?: boolean;
+  Cardstyle4?: boolean;
+  removelikebtn?: boolean;
+  wishlist?: boolean;
+  card3?: boolean;
+  likebtn?: boolean;
+  onPress?: () => void;
+  onImageError?: (imageUrl: string) => void;
+  wishlistActive?: boolean;
+  cartActive?: boolean;
+  product: any;
+  cartItemId?: string;
+};
 
-const CardStyle1 = ({id, image, title, price, discount,onPress1,onPress2, closebtn,removelikebtn, onPress, likebtn,card3,Cardstyle4,offer } : Props) => {
+const CardStyle1 = ({
+  id,
+  image,
+  title,
+  price,
+  discount,
+  review,
+  onPress,
+  onImageError,
+  closebtn,
+  removelikebtn,
+  likebtn,
+  card3,
+  Cardstyle4,
+  wishlistActive = false,
+  cartActive = false,
+  product,
+  cartItemId,
+}: Props) => {
+  const { colors, dark } = useTheme();
+  const dispatch = useDispatch();
 
-    const theme = useTheme();
-    const { colors } : {colors : any}= theme;
+  const FALLBACK_IMAGE = IMAGES.item12;
+  const [imageSrc, setImageSrc] = useState(
+    typeof image === 'string' ? { uri: image } : image || FALLBACK_IMAGE
+  );
+  const [imageLoading, setImageLoading] = useState(true);
 
-    const navigation = useNavigation<any>();
-
-    const dispatch = useDispatch();
-
-    const wishList = useSelector((state:any) => state.wishList.wishList);
-
-    const inWishlist = () => {
-        var temp = [] as any;
-        wishList.forEach((data:any) => {
-            temp.push(data.id);
-        });
-        return temp;
+  // Format price as currency
+  const formatPrice = (value: string | number) => {
+    if (typeof value === 'number') {
+      return `₹${value.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
     }
 
-    const removeItemFromWishList = () => {
-        dispatch(removeFromwishList(id as any));
+    const numericValue = parseFloat(value);
+    if (!isNaN(numericValue)) {
+      return `₹${numericValue.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
     }
 
-    return (
+    return String(value);
+  };
+
+  const handleWishlistPress = () => {
+    if (wishlistActive) {
+      dispatch(removeProductFromWishList(id));
+    } else {
+      dispatch(addProductToWishList(product));
+    }
+  };
+
+  const handleCartPress = () => {
+    if (cartActive && cartItemId) {
+      Alert.alert('Remove Item', 'Are you sure you want to remove this item?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(removeItemFromCart(cartItemId));
+            Alert.alert('Removed', 'Item removed from cart');
+          },
+        },
+      ]);
+    } else {
+      dispatch(
+        addItemToCart({
+          itemTagSno: id,
+          imagePath: typeof image === 'string' ? image : '',
+          productData: product,
+        })
+      );
+      Alert.alert('Added', 'Item added to cart');
+    }
+  };
+
+  const handleImageLoadError = () => {
+    setImageSrc(FALLBACK_IMAGE);
+    setImageLoading(false);
+    if (onImageError && typeof image === 'string') {
+      onImageError(image);
+    }
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  return (
+    <View
+      style={[
+        styles.cardContainer,
+        Platform.OS === 'ios' && {
+          backgroundColor: card3 ? undefined : dark ? COLORS.darkCard : COLORS.card,
+          borderRadius: SIZES.radius_lg,
+        },
+        { shadowColor: dark ? COLORS.darkShadow : COLORS.shadow },
+      ]}
+    >
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[
+          styles.cardTouchable,
+          {
+            backgroundColor: card3 ? undefined : dark ? COLORS.darkCard : COLORS.card,
+            alignItems: card3 ? 'center' : undefined,
+          },
+        ]}
+        onPress={onPress}
+      >
+        {/* Image Container with Loading State */}
         <View
-            style={[{
-                shadowColor: "rgba(195, 123, 95, 0.25)",
-                shadowOffset: {
-                    width: 2,
-                    height: 20,
-                },
-                shadowOpacity: .1,
-                shadowRadius: 5,
-            }, Platform.OS === "ios" && {
-                backgroundColor:card3 ? null : colors.card,
-                borderRadius:20
-            }]}
+          style={[
+            styles.imageContainer,
+            {
+              backgroundColor: card3 ? dark ? COLORS.darkCard : COLORS.card : undefined,
+              width: card3 ? 127 : undefined,
+              height: card3 ? 127 : Cardstyle4 ? undefined : 170,
+              borderRadius: card3 ? 40 : undefined,
+            },
+          ]}
         >
-            <TouchableOpacity
-                activeOpacity={.9}
-                style={{borderRadius:20,borderColor:colors.title,backgroundColor:card3 ? null :colors.card,alignItems:card3 ? 'center' : null}}
-                onPress={() => onPress && onPress()}
-            >
-                <View style={{backgroundColor:card3 ? colors.card : null ,width:card3 ? 127: null,height:card3 ? 127:Cardstyle4 ? null : 170,alignItems:'center',justifyContent:'center',borderRadius:card3 ? 40: null}}>
-                    <Image
-                        style={{ height: undefined, width: '100%', aspectRatio:1/1, borderRadius: 10,borderBottomLeftRadius:0,borderBottomRightRadius:0,resizeMode:'contain' }}
-                        source={image}
-                    />
-                </View>
-                <View style={{ padding:Cardstyle4 ? 20 :10,paddingTop:Cardstyle4 ? 0 : null,backgroundColor:card3 ? null :colors.card,borderBottomLeftRadius:20,borderBottomRightRadius:20,alignItems:card3 ?'center':null }}>
-                    {Cardstyle4 ?
-                        <Text style={{...FONTS.fontMedium,fontSize:13,color:COLORS.success,marginBottom:5}}>{offer}</Text> 
-                        :
-                        null
-                    }
-                    <Text style={{ ...FONTS.Marcellus, fontSize:card3 ?  16 : 18, color: colors.title,textAlign:card3 ? 'center' : 'left',paddingRight:card3 ? 0 : 20 }}>{title}</Text>
-                    <View style={{ position:Cardstyle4 ? 'absolute' : null,bottom:Cardstyle4 ? 20 : null,right:Cardstyle4 ? 20 : null,flexDirection:Cardstyle4 ? 'column' : 'row', alignItems: 'center', gap: 5, marginTop: 5 }}>
-                        {Cardstyle4 ?
-
-                            <Text style={{ ...FONTS.fontSemiBold, fontSize:card3 ?  16 : 18, color: colors.title, }}>{price}</Text>
-                            :
-                            <Text style={{ ...FONTS.Marcellus, fontSize:card3 ?  16 : 18, color: colors.title, }}>{price}</Text>
-                        }
-                        {Cardstyle4 ?
-
-                            <Text
-                            style={{
-                                ...FONTS.fontRegular,
-                                fontSize:card3 ?  13 : 14,
-                                textDecorationLine: 'line-through',
-                                color: theme.dark ? 'rgba(255,255,255, .4)' : 'rgba(0, 0, 0, 0.40)',
-                            }}>{discount}
-                            </Text>
-                            :
-                            <Text
-                                style={{
-                                    ...FONTS.Marcellus,
-                                    fontSize:card3 ?  13 : 14,
-                                    textDecorationLine: 'line-through',
-                                    color: theme.dark ? 'rgba(255,255,255, .4)' : 'rgba(0, 0, 0, 0.40)',
-                                    marginRight: 5
-                                }}>{discount}
-                            </Text>
-                        }
-                    </View>
-                </View>
-                {likebtn
-                    ?
-                    <View style={{ position: 'absolute', right: 15, top: 10 }}>
-                        <TouchableOpacity
-                            style={{
-                                height: 38,
-                                width: 38,
-                                borderRadius: 38,
-                                backgroundColor: 'rgba(0,0,0,.2)',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <Image
-                                style={{ height: 18, width: 18, resizeMode: 'contain', tintColor: COLORS.white }}
-                                source={IMAGES.close}
-                            />
-                        </TouchableOpacity>
-                    </View>
-                    :
-                    removelikebtn
-                    ?
-                        null
-                    :
-
-                    <View style={{ position: 'absolute', right: 5, top: 5 }}>
-                        <TouchableOpacity
-                            style={{
-                                height: 38,
-                                width: 38,
-                                borderRadius: 38,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <LikeBtn
-                                 onPress={inWishlist().includes(id) ? removeItemFromWishList : onPress1}
-                                 id={id}
-                                 inWishlist={inWishlist}
-                            />
-                        </TouchableOpacity>
-                    </View>
-                }
-                {closebtn ?
-                    <TouchableOpacity
-                        activeOpacity={.9}
-                        style={{ position: 'absolute', bottom: 0,right:0 }}
-                        onPress={onPress2}
-                    >
-                        <View style={{height:45,width:45,backgroundColor:COLORS.primary,alignItems:'center',justifyContent:'center',borderBottomRightRadius:20,borderTopLeftRadius:20}}>
-                            <Image
-                                style={{height:24,width:24,resizeMode:'contain',tintColor:colors.card}}
-                                source={IMAGES.shopping}
-                            />
-                        </View>
-                    </TouchableOpacity>
-                    :
-                    null
-                }
-            </TouchableOpacity>
+          {imageLoading && (
+            <View style={[styles.loadingOverlay, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            </View>
+          )}
+          
+          <Image
+            style={styles.productImage}
+            source={imageSrc}
+            onError={handleImageLoadError}
+            onLoad={handleImageLoad}
+            resizeMode="contain"
+          />
         </View>
-    )
-}
+
+        {/* Product Info */}
+        <View
+          style={[
+            styles.infoContainer,
+            {
+              backgroundColor: card3 ? undefined : dark ? COLORS.darkCard : COLORS.card,
+              alignItems: card3 ? 'center' : undefined,
+            },
+          ]}
+        >
+          {title ? (
+            <Text
+              style={[
+                styles.titleText,
+                {
+                  fontSize: card3 ? SIZES.font : SIZES.fontLg,
+                  color: dark ? COLORS.darkTitle : COLORS.title,
+                  textAlign: card3 ? 'center' : 'left',
+                  paddingRight: card3 ? 0 : SIZES.padding * 2,
+                },
+              ]}
+              numberOfLines={2}
+            >
+              {String(title)}
+            </Text>
+          ) : null}
+
+          {review ? (
+            <Text style={[styles.reviewText, { color: dark ? COLORS.darkTextLight : COLORS.textLight }]}>
+              {String(review)}
+            </Text>
+          ) : null}
+
+          <View
+            style={[
+              styles.priceContainer,
+              Cardstyle4 && styles.priceContainerCard4,
+            ]}
+          >
+            {price ? (
+              <Text
+                style={[
+                  styles.priceText,
+                  { fontSize: card3 ? SIZES.font : SIZES.fontLg, color: dark ? COLORS.darkTitle : COLORS.title },
+                ]}
+              >
+                {formatPrice(price)}
+              </Text>
+            ) : null}
+
+            {discount ? (
+              <Text
+                style={[
+                  styles.discountText,
+                  { color: dark ? COLORS.darkTextLight : COLORS.textLight },
+                ]}
+              >
+                {formatPrice(discount)}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Wishlist Button */}
+        {!removelikebtn && !likebtn && (
+          <View style={styles.wishlistButtonContainer}>
+            <TouchableOpacity style={[styles.iconButton, { backgroundColor: dark ? COLORS.darkOverlay : COLORS.overlay }]} onPress={handleWishlistPress}>
+              <Ionicons
+                name={wishlistActive ? 'heart' : 'heart-outline'}
+                size={SIZES.fontLg}
+                color={wishlistActive ? COLORS.danger : dark ? COLORS.darkTitle : COLORS.title}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Cart Button */}
+        {closebtn && (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.cartButtonContainer}
+            onPress={handleCartPress}
+          >
+            <View
+              style={[
+                styles.cartButton,
+                {
+                  backgroundColor: cartActive ? COLORS.danger : COLORS.primary,
+                },
+              ]}
+            >
+              <Feather
+                name={cartActive ? 'trash-2' : 'shopping-cart'}
+                size={SIZES.font}
+                color={dark ? COLORS.darkCard : COLORS.card}
+              />
+            </View>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  cardContainer: {
+    shadowOffset: { width: 2, height: 20 },
+    shadowOpacity: 0.1,
+    shadowRadius: SIZES.radius,
+    elevation: 5,
+    marginBottom: SIZES.margin,
+  },
+  cardTouchable: {
+    borderRadius: SIZES.radius_lg,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+  },
+  imageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    backgroundColor: COLORS.overlay,
+  },
+  productImage: {
+    height: undefined,
+    width: '100%',
+    aspectRatio: 1 / 1,
+    borderRadius: SIZES.radius,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  infoContainer: {
+    padding: SIZES.padding,
+    paddingTop: 0,
+    borderBottomLeftRadius: SIZES.radius_lg,
+    borderBottomRightRadius: SIZES.radius_lg,
+  },
+  titleText: {
+    ...FONTS.fontMedium,
+    marginBottom: SIZES.margin / 2,
+  },
+  reviewText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontXs,
+    color: COLORS.textLight,
+    marginBottom: SIZES.margin / 2,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: SIZES.margin / 2,
+  },
+  priceContainerCard4: {
+    position: 'absolute',
+    bottom: SIZES.padding,
+    right: SIZES.padding,
+    flexDirection: 'column',
+  },
+  priceText: {
+    ...FONTS.fontSemiBold,
+  },
+  discountText: {
+    ...FONTS.fontRegular,
+    fontSize: SIZES.fontSm,
+    textDecorationLine: 'line-through',
+    marginRight: 5,
+  },
+  wishlistButtonContainer: {
+    position: 'absolute',
+    right: 5,
+    top: 5,
+  },
+  iconButton: {
+    height: 38,
+    width: 38,
+    borderRadius: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.overlay,
+  },
+  cartButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+  },
+  cartButton: {
+    height: 35,
+    width: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomRightRadius: SIZES.radius_lg,
+    borderTopLeftRadius: SIZES.radius_lg,
+  },
+});
 
 export default CardStyle1;

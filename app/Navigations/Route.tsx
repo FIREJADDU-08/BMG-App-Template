@@ -8,6 +8,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import StackNavigator from "./StackNavigator";
 import themeContext from "../constants/themeContext";
 import { COLORS } from "../constants/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 const Routes = () => {
@@ -53,6 +54,7 @@ const Routes = () => {
   const theme = isDarkTheme ? CustomDarkTheme : CustomDefaultTheme;
 
   return (
+    
     <SafeAreaProvider>
       <themeContext.Provider value={authContext}>
         <NavigationContainer theme={theme}>

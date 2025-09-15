@@ -7,8 +7,8 @@ import { COLORS, FONTS, IMAGES } from '../../constants/theme';
 import { useTheme } from '@react-navigation/native';
 import { ScrollView } from 'react-native-gesture-handler';
 import FeatherIcon from 'react-native-vector-icons/Feather';
-import ButtonOutline from '../Button/ButtonOutline';
-import Button from '../Button/Button';
+import ButtonOutline from '../../components/Button/ButtonOutline';
+import Button from '../../components/Button/Button';
 
 
 
